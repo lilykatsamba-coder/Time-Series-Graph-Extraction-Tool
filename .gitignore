@@ -1,2 +1,6 @@
-
+# Local virtual environment
 .venv/
+
+# Python-generated cache files
+__pycache__/
+*.pyc
