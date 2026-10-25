@@ -89,6 +89,37 @@ def save_ground_truth(filename, timestamps, values, extra_columns=None):
     dataframe.to_csv(GROUND_TRUTH_DIR / filename, index=False)
 
 
+def save_numeric_ground_truth(filename, time_values, values):
+    """Save ground truth for an elapsed or numeric-time chart."""
+
+    dataframe = pd.DataFrame({
+        "timestamp": time_values,
+        "value": values
+    })
+
+    dataframe.to_csv(
+        GROUND_TRUTH_DIR / filename,
+        index=False
+    )
+
+
+def get_calendar_frequency_details(frequency):
+    """Return a normalized interval value and time unit."""
+
+    frequency_details = {
+        "monthly": (1, "months"),
+        "yearly": (1, "years"),
+        "hourly": (1, "hours"),
+        "10 minutes": (10, "minutes"),
+        "daily": (1, "days")
+    }
+
+    return frequency_details.get(
+        frequency,
+        (None, "custom")
+    )
+
+
 def save_metadata(
     case_id,
     series_name,
@@ -101,15 +132,59 @@ def save_metadata(
     supported=True,
     warning=None
 ):
-    """Store metadata for one test case."""
+    """Store metadata for one calendar-time test case."""
+
+    frequency_value, time_unit = get_calendar_frequency_details(
+        frequency
+    )
 
     metadata[case_id] = {
         "series_name": series_name,
         "unit": unit,
         "frequency": frequency,
+        "time_representation": "Calendar date/time",
+        "frequency_value": frequency_value,
+        "time_unit": time_unit,
         "time_axis_range": [
             pd.Timestamp(timestamps[0]).isoformat(),
             pd.Timestamp(timestamps[-1]).isoformat()
+        ],
+        "value_axis_range": [
+            float(np.min(values)),
+            float(np.max(values))
+        ],
+        "image_file": image_filename,
+        "ground_truth_file": ground_truth_filename,
+        "supported_by_mvp": supported,
+        "warning": warning
+    }
+
+
+def save_numeric_metadata(
+    case_id,
+    series_name,
+    unit,
+    frequency_value,
+    time_unit,
+    time_values,
+    values,
+    image_filename,
+    ground_truth_filename,
+    supported=True,
+    warning=None
+):
+    """Store metadata for an elapsed or numeric-time test case."""
+
+    metadata[case_id] = {
+        "series_name": series_name,
+        "unit": unit,
+        "frequency": f"{frequency_value} {time_unit}",
+        "time_representation": "Elapsed or numeric time",
+        "frequency_value": float(frequency_value),
+        "time_unit": time_unit,
+        "time_axis_range": [
+            float(time_values[0]),
+            float(time_values[-1])
         ],
         "value_axis_range": [
             float(np.min(values)),
@@ -652,6 +727,49 @@ save_metadata(
     "unsupported_multiple_lines_ground_truth.csv",
     supported=False,
     warning="The chart contains two plotted lines. The MVP supports only one line."
+)
+
+
+# =========================================================
+# 10. Battery discharge: elapsed numeric time
+# =========================================================
+
+time_values = np.arange(0, 31, 5)
+
+values = (
+    12.6
+    - time_values * 0.08
+    + rng.normal(0, 0.05, len(time_values))
+)
+
+save_numeric_ground_truth(
+    "battery_discharge_elapsed_time_ground_truth.csv",
+    time_values,
+    values
+)
+
+save_chart(
+    "battery_discharge_elapsed_time.png",
+    time_values,
+    values,
+    title="Battery Discharge Voltage",
+    x_label="Time (minutes)",
+    y_label="Voltage (V)",
+    marker="o"
+)
+
+save_numeric_metadata(
+    "battery_discharge_elapsed_time",
+    "Battery Discharge Voltage",
+    "V",
+    frequency_value=5,
+    time_unit="minutes",
+    time_values=time_values,
+    values=values,
+    image_filename="battery_discharge_elapsed_time.png",
+    ground_truth_filename=(
+        "battery_discharge_elapsed_time_ground_truth.csv"
+    )
 )
 
 

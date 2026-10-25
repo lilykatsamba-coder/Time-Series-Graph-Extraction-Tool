@@ -3,6 +3,9 @@
         "series_name": "Product Sales",
         "unit": "EUR",
         "frequency": "monthly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "months",
         "time_axis_range": [
             "2023-01-01T00:00:00",
             "2024-12-01T00:00:00"
@@ -20,6 +23,9 @@
         "series_name": "Manufacturing Defect Rate",
         "unit": "percent",
         "frequency": "yearly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "years",
         "time_axis_range": [
             "2010-01-01T00:00:00",
             "2024-01-01T00:00:00"
@@ -37,6 +43,9 @@
         "series_name": "Office Room Temperature",
         "unit": "degrees C",
         "frequency": "hourly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "hours",
         "time_axis_range": [
             "2024-01-01T00:00:00",
             "2024-01-02T23:00:00"
@@ -54,6 +63,9 @@
         "series_name": "Machine Vibration",
         "unit": "mm/s",
         "frequency": "10 minutes",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 10,
+        "time_unit": "minutes",
         "time_axis_range": [
             "2024-02-01T08:00:00",
             "2024-02-02T07:50:00"
@@ -71,6 +83,9 @@
         "series_name": "Electricity Demand",
         "unit": "kW",
         "frequency": "hourly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "hours",
         "time_axis_range": [
             "2024-03-01T00:00:00",
             "2024-03-07T23:00:00"
@@ -88,6 +103,9 @@
         "series_name": "Daily Rainfall",
         "unit": "mm",
         "frequency": "daily",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "days",
         "time_axis_range": [
             "2024-04-01T00:00:00",
             "2024-05-30T00:00:00"
@@ -105,6 +123,9 @@
         "series_name": "Annual Energy Consumption",
         "unit": "MWh",
         "frequency": "yearly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "years",
         "time_axis_range": [
             "2000-01-01T00:00:00",
             "2019-01-01T00:00:00"
@@ -122,6 +143,9 @@
         "series_name": "Website Visits",
         "unit": "visits",
         "frequency": "daily",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "days",
         "time_axis_range": [
             "2024-05-01T00:00:00",
             "2024-06-14T00:00:00"
@@ -139,6 +163,9 @@
         "series_name": "Two-Machine Energy Consumption",
         "unit": "kWh",
         "frequency": "daily",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "days",
         "time_axis_range": [
             "2024-06-01T00:00:00",
             "2024-07-15T00:00:00"
@@ -151,5 +178,25 @@
         "ground_truth_file": "unsupported_multiple_lines_ground_truth.csv",
         "supported_by_mvp": false,
         "warning": "The chart contains two plotted lines. The MVP supports only one line."
+    },
+    "battery_discharge_elapsed_time": {
+        "series_name": "Battery Discharge Voltage",
+        "unit": "V",
+        "frequency": "5 minutes",
+        "time_representation": "Elapsed or numeric time",
+        "frequency_value": 5.0,
+        "time_unit": "minutes",
+        "time_axis_range": [
+            0.0,
+            30.0
+        ],
+        "value_axis_range": [
+            10.209398679374305,
+            12.561723236128515
+        ],
+        "image_file": "battery_discharge_elapsed_time.png",
+        "ground_truth_file": "battery_discharge_elapsed_time_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
     }
 }
