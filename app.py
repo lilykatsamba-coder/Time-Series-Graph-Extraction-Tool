@@ -9,15 +9,8 @@ st.set_page_config(
 )
 
 
-def parse_time_value(value, mode):
-    """
-    Parse a time-axis value.
-
-    mode can be:
-    - datetime
-    - date
-    - generic
-    """
+def parse_calendar_value(value, mode):
+    """Parse a calendar date or date-time value."""
 
     cleaned_value = value.strip()
 
@@ -31,12 +24,25 @@ def parse_time_value(value, mode):
         if mode == "date":
             return datetime.date.fromisoformat(cleaned_value)
 
-        # Generic custom format:
-        # accept either date or date and time.
         try:
             return datetime.datetime.fromisoformat(cleaned_value)
         except ValueError:
             return datetime.date.fromisoformat(cleaned_value)
+
+    except ValueError:
+        return None
+
+
+def parse_numeric_value(value):
+    """Parse a numeric elapsed-time value."""
+
+    cleaned_value = value.strip()
+
+    if not cleaned_value:
+        return None
+
+    try:
+        return float(cleaned_value)
 
     except ValueError:
         return None
@@ -58,7 +64,6 @@ if uploaded_file is None:
     st.info("Please upload a PNG or JPG graph image to continue.")
 
 else:
-    # Reset metadata when a different file is uploaded.
     current_file_id = (
         f"{uploaded_file.name}_{uploaded_file.size}"
     )
@@ -100,87 +105,179 @@ else:
 
     if not metadata_confirmed:
 
-        frequency_options = [
-            "Select a frequency",
-            "10 minutes",
-            "hour",
-            "day",
-            "month",
-            "year",
-            "custom"
+        # Series name and values-axis information
+        series_name = st.text_input(
+            "Series name",
+            value=saved_metadata.get(
+                "series_name",
+                ""
+            ),
+            placeholder="For example: Electricity demand"
+        )
+
+        unit = st.text_input(
+            "Values-axis unit",
+            value=saved_metadata.get(
+                "unit",
+                ""
+            ),
+            placeholder="For example: kW, EUR, mm, or degrees C"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            value_min = st.text_input(
+                "Values-axis minimum",
+                value=str(
+                    saved_metadata.get(
+                        "value_axis_min",
+                        ""
+                    )
+                ),
+                placeholder="For example: 0"
+            )
+
+        with col2:
+            value_max = st.text_input(
+                "Values-axis maximum",
+                value=str(
+                    saved_metadata.get(
+                        "value_axis_max",
+                        ""
+                    )
+                ),
+                placeholder="For example: 100"
+            )
+
+        st.divider()
+
+        # Time-axis representation
+        representation_options = [
+            "Select a time-axis representation",
+            "Calendar date/time",
+            "Elapsed or numeric time"
         ]
 
-        saved_frequency = saved_metadata.get(
-            "frequency",
+        saved_representation = saved_metadata.get(
+            "time_representation",
             ""
         )
 
-        if saved_frequency in frequency_options:
-            frequency_selection = saved_frequency
-        elif saved_frequency:
-            frequency_selection = "custom"
+        if saved_representation in representation_options:
+            representation_selection = saved_representation
         else:
-            frequency_selection = "Select a frequency"
+            representation_selection = (
+                "Select a time-axis representation"
+            )
 
-        frequency = st.selectbox(
-            "Time-axis frequency",
-            options=frequency_options,
-            index=frequency_options.index(
-                frequency_selection
+        time_representation = st.selectbox(
+            "Time-axis representation",
+            options=representation_options,
+            index=representation_options.index(
+                representation_selection
             )
         )
 
-        custom_frequency = ""
+        # Time-axis frequency
+        frequency_value = st.text_input(
+            "Time-axis frequency",
+            value=str(
+                saved_metadata.get(
+                    "frequency_value",
+                    ""
+                )
+            ),
+            placeholder="For example: 5"
+        )
 
-        if frequency == "custom":
-            custom_frequency = st.text_input(
-                "Custom time frequency",
+        # Time-axis unit
+        time_unit_options = [
+            "Select a time unit",
+            "seconds",
+            "minutes",
+            "hours",
+            "days",
+            "months",
+            "years",
+            "custom"
+        ]
+
+        saved_time_unit = saved_metadata.get(
+            "time_unit",
+            ""
+        )
+
+        if saved_time_unit in time_unit_options:
+            time_unit_selection = saved_time_unit
+        elif saved_time_unit:
+            time_unit_selection = "custom"
+        else:
+            time_unit_selection = "Select a time unit"
+
+        time_unit = st.selectbox(
+            "Time-axis unit",
+            options=time_unit_options,
+            index=time_unit_options.index(
+                time_unit_selection
+            )
+        )
+
+        custom_time_unit = ""
+
+        if time_unit == "custom":
+            custom_time_unit = st.text_input(
+                "Custom time-axis unit",
                 value=saved_metadata.get(
-                    "custom_frequency",
+                    "custom_time_unit",
                     ""
                 ),
-                placeholder="For example: every 15 minutes"
+                placeholder="For example: weeks"
             )
 
-        if frequency in ["10 minutes", "hour"]:
-            time_input_mode = "datetime"
-            start_label = "Time-axis start date and time"
-            end_label = "Time-axis end date and time"
-            time_placeholder = "YYYY-MM-DD HH:MM:SS"
+        # Dynamic time-axis fields
+        if time_representation == "Elapsed or numeric time":
+            time_input_mode = "numeric"
+            start_label = "Time-axis start"
+            end_label = "Time-axis end"
+            start_placeholder = "For example: 0"
+            end_placeholder = "For example: 30"
 
-        elif frequency in ["day", "month", "year"]:
-            time_input_mode = "date"
-            start_label = "Time-axis start date"
-            end_label = "Time-axis end date"
-            time_placeholder = "YYYY-MM-DD"
+        elif time_representation == "Calendar date/time":
+
+            if time_unit in ["seconds", "minutes", "hours"]:
+                time_input_mode = "datetime"
+                start_label = "Time-axis start date and time"
+                end_label = "Time-axis end date and time"
+                start_placeholder = "YYYY-MM-DD HH:MM:SS"
+                end_placeholder = "YYYY-MM-DD HH:MM:SS"
+
+            elif time_unit in ["days", "months", "years"]:
+                time_input_mode = "date"
+                start_label = "Time-axis start date"
+                end_label = "Time-axis end date"
+                start_placeholder = "YYYY-MM-DD"
+                end_placeholder = "YYYY-MM-DD"
+
+            else:
+                time_input_mode = "generic"
+                start_label = "Time-axis start"
+                end_label = "Time-axis end"
+                start_placeholder = (
+                    "YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                )
+                end_placeholder = (
+                    "YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+                )
 
         else:
             time_input_mode = "generic"
             start_label = "Time-axis start"
             end_label = "Time-axis end"
-            time_placeholder = (
-                "YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
-            )
+            start_placeholder = "Select a representation first"
+            end_placeholder = "Select a representation first"
 
         with st.form("metadata_form"):
-
-            series_name = st.text_input(
-                "Series name",
-                value=saved_metadata.get(
-                    "series_name",
-                    ""
-                ),
-                placeholder="For example: Electricity demand"
-            )
-
-            unit = st.text_input(
-                "Values-axis unit",
-                value=saved_metadata.get(
-                    "unit",
-                    ""
-                ),
-                placeholder="For example: kW, EUR, mm, or degrees C"
-            )
 
             col1, col2 = st.columns(2)
 
@@ -191,7 +288,7 @@ else:
                         "time_axis_start",
                         ""
                     ),
-                    placeholder=time_placeholder
+                    placeholder=start_placeholder
                 )
 
             with col2:
@@ -201,33 +298,7 @@ else:
                         "time_axis_end",
                         ""
                     ),
-                    placeholder=time_placeholder
-                )
-
-            col3, col4 = st.columns(2)
-
-            with col3:
-                value_min = st.text_input(
-                    "Values-axis minimum",
-                    value=str(
-                        saved_metadata.get(
-                            "value_axis_min",
-                            ""
-                        )
-                    ),
-                    placeholder="For example: 0"
-                )
-
-            with col4:
-                value_max = st.text_input(
-                    "Values-axis maximum",
-                    value=str(
-                        saved_metadata.get(
-                            "value_axis_max",
-                            ""
-                        )
-                    ),
-                    placeholder="For example: 100"
+                    placeholder=end_placeholder
                 )
 
             metadata_submitted = st.form_submit_button(
@@ -247,44 +318,6 @@ else:
                     "Please enter the values-axis unit."
                 )
 
-            if frequency == "Select a frequency":
-                validation_errors.append(
-                    "Please select a time-axis frequency."
-                )
-
-            if frequency == "custom" and not custom_frequency.strip():
-                validation_errors.append(
-                    "Please enter the custom time frequency."
-                )
-
-            parsed_start = parse_time_value(
-                time_start,
-                time_input_mode
-            )
-
-            parsed_end = parse_time_value(
-                time_end,
-                time_input_mode
-            )
-
-            if not time_start.strip():
-                validation_errors.append(
-                    "Please enter the time-axis start."
-                )
-            elif parsed_start is None:
-                validation_errors.append(
-                    "The time-axis start has an invalid format."
-                )
-
-            if not time_end.strip():
-                validation_errors.append(
-                    "Please enter the time-axis end."
-                )
-            elif parsed_end is None:
-                validation_errors.append(
-                    "The time-axis end has an invalid format."
-                )
-
             parsed_value_min = None
             parsed_value_max = None
 
@@ -293,9 +326,9 @@ else:
                     "Please enter the values-axis minimum."
                 )
             else:
-                try:
-                    parsed_value_min = float(value_min)
-                except ValueError:
+                parsed_value_min = parse_numeric_value(value_min)
+
+                if parsed_value_min is None:
                     validation_errors.append(
                         "Values-axis minimum must be numeric."
                     )
@@ -305,11 +338,109 @@ else:
                     "Please enter the values-axis maximum."
                 )
             else:
-                try:
-                    parsed_value_max = float(value_max)
-                except ValueError:
+                parsed_value_max = parse_numeric_value(value_max)
+
+                if parsed_value_max is None:
                     validation_errors.append(
                         "Values-axis maximum must be numeric."
+                    )
+
+            if (
+                parsed_value_min is not None
+                and parsed_value_max is not None
+                and parsed_value_min >= parsed_value_max
+            ):
+                validation_errors.append(
+                    "The values-axis minimum must be smaller "
+                    "than the maximum."
+                )
+
+            if (
+                time_representation
+                == "Select a time-axis representation"
+            ):
+                validation_errors.append(
+                    "Please select a time-axis representation."
+                )
+
+            parsed_frequency = None
+
+            if not frequency_value.strip():
+                validation_errors.append(
+                    "Please enter the time-axis frequency."
+                )
+            else:
+                parsed_frequency = parse_numeric_value(
+                    frequency_value
+                )
+
+                if (
+                    parsed_frequency is None
+                    or parsed_frequency <= 0
+                ):
+                    validation_errors.append(
+                        "Time-axis frequency must be a positive number."
+                    )
+
+            if time_unit == "Select a time unit":
+                validation_errors.append(
+                    "Please select a time-axis unit."
+                )
+
+            if time_unit == "custom" and not custom_time_unit.strip():
+                validation_errors.append(
+                    "Please enter the custom time-axis unit."
+                )
+
+            if time_input_mode == "numeric":
+                parsed_start = parse_numeric_value(time_start)
+                parsed_end = parse_numeric_value(time_end)
+
+                if not time_start.strip():
+                    validation_errors.append(
+                        "Please enter the time-axis start."
+                    )
+                elif parsed_start is None:
+                    validation_errors.append(
+                        "Time-axis start must be numeric."
+                    )
+
+                if not time_end.strip():
+                    validation_errors.append(
+                        "Please enter the time-axis end."
+                    )
+                elif parsed_end is None:
+                    validation_errors.append(
+                        "Time-axis end must be numeric."
+                    )
+
+            else:
+                parsed_start = parse_calendar_value(
+                    time_start,
+                    time_input_mode
+                )
+
+                parsed_end = parse_calendar_value(
+                    time_end,
+                    time_input_mode
+                )
+
+                if not time_start.strip():
+                    validation_errors.append(
+                        "Please enter the time-axis start."
+                    )
+                elif parsed_start is None:
+                    validation_errors.append(
+                        "The time-axis start has an invalid format."
+                    )
+
+                if not time_end.strip():
+                    validation_errors.append(
+                        "Please enter the time-axis end."
+                    )
+                elif parsed_end is None:
+                    validation_errors.append(
+                        "The time-axis end has an invalid format."
                     )
 
             if (
@@ -322,37 +453,39 @@ else:
                     "the time-axis end."
                 )
 
-            if (
-                parsed_value_min is not None
-                and parsed_value_max is not None
-                and parsed_value_min >= parsed_value_max
-            ):
-                validation_errors.append(
-                    "The values-axis minimum must be smaller than "
-                    "the maximum."
-                )
-
             if validation_errors:
                 for error in validation_errors:
                     st.error(error)
 
             else:
-                if frequency == "custom":
-                    confirmed_frequency = custom_frequency.strip()
-                    stored_custom_frequency = custom_frequency.strip()
+                if time_unit == "custom":
+                    confirmed_time_unit = custom_time_unit.strip()
+                    stored_custom_time_unit = (
+                        custom_time_unit.strip()
+                    )
                 else:
-                    confirmed_frequency = frequency
-                    stored_custom_frequency = ""
+                    confirmed_time_unit = time_unit
+                    stored_custom_time_unit = ""
 
                 st.session_state["metadata"] = {
                     "series_name": series_name.strip(),
                     "unit": unit.strip(),
-                    "frequency": confirmed_frequency,
-                    "custom_frequency": stored_custom_frequency,
-                    "time_axis_start": parsed_start.isoformat(),
-                    "time_axis_end": parsed_end.isoformat(),
                     "value_axis_min": parsed_value_min,
-                    "value_axis_max": parsed_value_max
+                    "value_axis_max": parsed_value_max,
+                    "time_representation": time_representation,
+                    "frequency_value": parsed_frequency,
+                    "time_unit": confirmed_time_unit,
+                    "custom_time_unit": stored_custom_time_unit,
+                    "time_axis_start": (
+                        parsed_start.isoformat()
+                        if hasattr(parsed_start, "isoformat")
+                        else parsed_start
+                    ),
+                    "time_axis_end": (
+                        parsed_end.isoformat()
+                        if hasattr(parsed_end, "isoformat")
+                        else parsed_end
+                    )
                 }
 
                 st.session_state["metadata_confirmed"] = True
@@ -362,6 +495,7 @@ else:
     else:
         metadata = st.session_state["metadata"]
 
+        # Locked metadata display
         st.text_input(
             "Series name",
             value=metadata["series_name"],
@@ -374,19 +508,59 @@ else:
             disabled=True
         )
 
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.text_input(
+                "Values-axis minimum",
+                value=str(metadata["value_axis_min"]),
+                disabled=True
+            )
+
+        with col2:
+            st.text_input(
+                "Values-axis maximum",
+                value=str(metadata["value_axis_max"]),
+                disabled=True
+            )
+
         st.text_input(
-            "Time-axis frequency",
-            value=metadata["frequency"],
+            "Time-axis representation",
+            value=metadata["time_representation"],
             disabled=True
         )
 
-        locked_frequency = metadata["frequency"]
+        st.text_input(
+            "Time-axis frequency",
+            value=str(metadata["frequency_value"]),
+            disabled=True
+        )
 
-        if locked_frequency in ["10 minutes", "hour"]:
+        st.text_input(
+            "Time-axis unit",
+            value=metadata["time_unit"],
+            disabled=True
+        )
+
+        if metadata["time_representation"] == (
+            "Elapsed or numeric time"
+        ):
+            locked_start_label = "Time-axis start"
+            locked_end_label = "Time-axis end"
+
+        elif metadata["time_unit"] in [
+            "seconds",
+            "minutes",
+            "hours"
+        ]:
             locked_start_label = "Time-axis start date and time"
             locked_end_label = "Time-axis end date and time"
 
-        elif locked_frequency in ["day", "month", "year"]:
+        elif metadata["time_unit"] in [
+            "days",
+            "months",
+            "years"
+        ]:
             locked_start_label = "Time-axis start date"
             locked_end_label = "Time-axis end date"
 
@@ -399,30 +573,14 @@ else:
         with col1:
             st.text_input(
                 locked_start_label,
-                value=metadata["time_axis_start"],
+                value=str(metadata["time_axis_start"]),
                 disabled=True
             )
 
         with col2:
             st.text_input(
                 locked_end_label,
-                value=metadata["time_axis_end"],
-                disabled=True
-            )
-
-        col3, col4 = st.columns(2)
-
-        with col3:
-            st.text_input(
-                "Values-axis minimum",
-                value=str(metadata["value_axis_min"]),
-                disabled=True
-            )
-
-        with col4:
-            st.text_input(
-                "Values-axis maximum",
-                value=str(metadata["value_axis_max"]),
+                value=str(metadata["time_axis_end"]),
                 disabled=True
             )
 
