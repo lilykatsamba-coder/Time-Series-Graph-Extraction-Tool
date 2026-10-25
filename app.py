@@ -13,5 +13,18 @@ st.write(
     "and forecast its data."
 )
 
-st.info("The application interface is under development.")
+uploaded_file = st.file_uploader(
+    "Upload a digital 2D line graph",
+    type=["png", "jpg", "jpeg"]
+)
 
+if uploaded_file is not None:
+    st.success(f"Uploaded file: {uploaded_file.name}")
+    st.image(
+        uploaded_file,
+        caption="Uploaded graph",
+        use_container_width=True
+    )
+else:
+    st.info("Please upload a PNG or JPG graph image to continue.")
+    
