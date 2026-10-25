@@ -4,3 +4,6 @@
 # Python-generated cache files
 __pycache__/
 *.pyc
+
+# Local extraction diagnostics
+debug_outputs/
