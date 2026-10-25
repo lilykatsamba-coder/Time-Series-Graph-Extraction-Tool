@@ -1,0 +1,11 @@
+# Python Libraries
+streamlit
+opencv-python
+Pillow
+numpy
+pandas
+plotly
+statsmodels
+
+# Used only to generate the test chart images
+matplotlib
