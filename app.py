@@ -146,7 +146,7 @@ else:
             time_input_mode = "datetime"
             start_label = "Time-axis start date and time"
             end_label = "Time-axis end date and time"
-            time_placeholder = "YYYY-MM-DD HH:MM"
+            time_placeholder = "YYYY-MM-DD HH:MM:SS"
 
         elif frequency in ["day", "month", "year"]:
             time_input_mode = "date"
@@ -158,7 +158,9 @@ else:
             time_input_mode = "generic"
             start_label = "Time-axis start"
             end_label = "Time-axis end"
-            time_placeholder = "YYYY-MM-DD or YYYY-MM-DD HH:MM"
+            time_placeholder = (
+                "YYYY-MM-DD or YYYY-MM-DD HH:MM:SS"
+            )
 
         with st.form("metadata_form"):
 
