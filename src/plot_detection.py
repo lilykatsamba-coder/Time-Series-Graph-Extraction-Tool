@@ -179,13 +179,13 @@ def detect_plot_bounds(
     )
 
     horizontal_rows = horizontal_rows[
-        (horizontal_rows > image_height * 0.10)
-        & (horizontal_rows < image_height * 0.90)
+        (horizontal_rows > image_height * 0.02)
+        & (horizontal_rows < image_height * 0.98)
     ]
 
     vertical_columns = vertical_columns[
-        (vertical_columns > image_width * 0.10)
-        & (vertical_columns < image_width * 0.90)
+        (vertical_columns > image_width * 0.02)
+        & (vertical_columns < image_width * 0.98)
     ]
 
     if len(horizontal_rows) < 2:
@@ -196,7 +196,15 @@ def detect_plot_bounds(
     top = float(np.min(horizontal_rows))
     bottom = float(np.max(horizontal_rows))
 
-    if len(vertical_columns) >= 2:
+    vertical_span_is_valid = (
+        len(vertical_columns) >= 2
+        and (
+            np.max(vertical_columns)
+            - np.min(vertical_columns)
+        ) >= image_width * 0.5
+    )
+
+    if vertical_span_is_valid:
         left = float(np.min(vertical_columns))
         right = float(np.max(vertical_columns))
         detection_method = "chart_lines"
@@ -208,7 +216,7 @@ def detect_plot_bounds(
 
         if blue_line_extent is None:
             raise ValueError(
-                "Could not detect the vertical plot boundaries "
+                "Could not detect valid vertical plot boundaries "
                 "or the plotted line extent."
             )
 
