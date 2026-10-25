@@ -82,7 +82,7 @@ else:
     st.image(
         uploaded_file,
         caption="Uploaded graph",
-        use_container_width=True
+        width="stretch"
     )
 
     st.divider()
