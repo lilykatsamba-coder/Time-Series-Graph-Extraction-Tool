@@ -9,13 +9,14 @@ st.set_page_config(
 )
 
 
-def parse_time_value(value, requires_datetime):
+def parse_time_value(value, mode):
     """
     Parse a time-axis value.
 
-    Sub-hourly and hourly data require a date and time.
-    Daily, monthly, and yearly data require a date.
-    Custom frequencies accept either format.
+    mode can be:
+    - datetime
+    - date
+    - generic
     """
 
     cleaned_value = value.strip()
@@ -24,10 +25,18 @@ def parse_time_value(value, requires_datetime):
         return None
 
     try:
-        if requires_datetime:
+        if mode == "datetime":
             return datetime.datetime.fromisoformat(cleaned_value)
 
-        return datetime.date.fromisoformat(cleaned_value)
+        if mode == "date":
+            return datetime.date.fromisoformat(cleaned_value)
+
+        # Generic custom format:
+        # accept either date or date and time.
+        try:
+            return datetime.datetime.fromisoformat(cleaned_value)
+        except ValueError:
+            return datetime.date.fromisoformat(cleaned_value)
 
     except ValueError:
         return None
@@ -89,33 +98,67 @@ else:
         {}
     )
 
-    frequency_options = [
-        "10 minutes",
-        "hour",
-        "day",
-        "month",
-        "year",
-        "custom"
-    ]
-
-    saved_frequency = saved_metadata.get(
-        "frequency",
-        ""
-    )
-
-    if saved_frequency in frequency_options:
-        frequency_selection = saved_frequency
-    elif saved_frequency:
-        frequency_selection = "custom"
-    else:
-        frequency_selection = "10 minutes"
-
-    subhourly_or_hourly = frequency_selection in [
-        "10 minutes",
-        "hour"
-    ]
-
     if not metadata_confirmed:
+
+        frequency_options = [
+            "Select a frequency",
+            "10 minutes",
+            "hour",
+            "day",
+            "month",
+            "year",
+            "custom"
+        ]
+
+        saved_frequency = saved_metadata.get(
+            "frequency",
+            ""
+        )
+
+        if saved_frequency in frequency_options:
+            frequency_selection = saved_frequency
+        elif saved_frequency:
+            frequency_selection = "custom"
+        else:
+            frequency_selection = "Select a frequency"
+
+        frequency = st.selectbox(
+            "Time-axis frequency",
+            options=frequency_options,
+            index=frequency_options.index(
+                frequency_selection
+            )
+        )
+
+        custom_frequency = ""
+
+        if frequency == "custom":
+            custom_frequency = st.text_input(
+                "Custom time frequency",
+                value=saved_metadata.get(
+                    "custom_frequency",
+                    ""
+                ),
+                placeholder="For example: every 15 minutes"
+            )
+
+        if frequency in ["10 minutes", "hour"]:
+            time_input_mode = "datetime"
+            start_label = "Time-axis start date and time"
+            end_label = "Time-axis end date and time"
+            time_placeholder = "YYYY-MM-DD HH:MM"
+
+        elif frequency in ["day", "month", "year"]:
+            time_input_mode = "date"
+            start_label = "Time-axis start date"
+            end_label = "Time-axis end date"
+            time_placeholder = "YYYY-MM-DD"
+
+        else:
+            time_input_mode = "generic"
+            start_label = "Time-axis start"
+            end_label = "Time-axis end"
+            time_placeholder = "YYYY-MM-DD or YYYY-MM-DD HH:MM"
 
         with st.form("metadata_form"):
 
@@ -136,45 +179,6 @@ else:
                 ),
                 placeholder="For example: kW, EUR, mm, or degrees C"
             )
-
-            frequency = st.selectbox(
-                "Time-axis frequency",
-                options=frequency_options,
-                index=frequency_options.index(
-                    frequency_selection
-                )
-            )
-
-            custom_frequency = ""
-
-            if frequency == "custom":
-                custom_frequency = st.text_input(
-                    "Custom time frequency",
-                    value=saved_metadata.get(
-                        "custom_frequency",
-                        ""
-                    ),
-                    placeholder="For example: every 15 minutes"
-                )
-
-            current_frequency_for_fields = frequency
-
-            if frequency == "custom":
-                current_frequency_for_fields = "custom"
-
-            requires_datetime = current_frequency_for_fields in [
-                "10 minutes",
-                "hour"
-            ]
-
-            if requires_datetime:
-                start_label = "Time-axis start date and time"
-                end_label = "Time-axis end date and time"
-                time_placeholder = "YYYY-MM-DD HH:MM"
-            else:
-                start_label = "Time-axis start date"
-                end_label = "Time-axis end date"
-                time_placeholder = "YYYY-MM-DD"
 
             col1, col2 = st.columns(2)
 
@@ -241,24 +245,24 @@ else:
                     "Please enter the values-axis unit."
                 )
 
+            if frequency == "Select a frequency":
+                validation_errors.append(
+                    "Please select a time-axis frequency."
+                )
+
             if frequency == "custom" and not custom_frequency.strip():
                 validation_errors.append(
                     "Please enter the custom time frequency."
                 )
 
-            requires_datetime = frequency in [
-                "10 minutes",
-                "hour"
-            ]
-
             parsed_start = parse_time_value(
                 time_start,
-                requires_datetime
+                time_input_mode
             )
 
             parsed_end = parse_time_value(
                 time_end,
-                requires_datetime
+                time_input_mode
             )
 
             if not time_start.strip():
@@ -376,17 +380,17 @@ else:
 
         locked_frequency = metadata["frequency"]
 
-        locked_requires_datetime = locked_frequency in [
-            "10 minutes",
-            "hour"
-        ]
-
-        if locked_requires_datetime:
+        if locked_frequency in ["10 minutes", "hour"]:
             locked_start_label = "Time-axis start date and time"
             locked_end_label = "Time-axis end date and time"
-        else:
+
+        elif locked_frequency in ["day", "month", "year"]:
             locked_start_label = "Time-axis start date"
             locked_end_label = "Time-axis end date"
+
+        else:
+            locked_start_label = "Time-axis start"
+            locked_end_label = "Time-axis end"
 
         col1, col2 = st.columns(2)
 
