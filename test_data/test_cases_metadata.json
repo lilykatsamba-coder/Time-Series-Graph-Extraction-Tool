@@ -1,0 +1,155 @@
+{
+    "product_sales": {
+        "series_name": "Product Sales",
+        "unit": "EUR",
+        "frequency": "monthly",
+        "time_axis_range": [
+            "2023-01-01T00:00:00",
+            "2024-12-01T00:00:00"
+        ],
+        "value_axis_range": [
+            12076.179269938608,
+            24611.3676294828
+        ],
+        "image_file": "product_sales.png",
+        "ground_truth_file": "product_sales_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "manufacturing_defect_rate": {
+        "series_name": "Manufacturing Defect Rate",
+        "unit": "percent",
+        "frequency": "yearly",
+        "time_axis_range": [
+            "2010-01-01T00:00:00",
+            "2024-01-01T00:00:00"
+        ],
+        "value_axis_range": [
+            2.6938796960771905,
+            11.892918044459224
+        ],
+        "image_file": "manufacturing_defect_rate.png",
+        "ground_truth_file": "manufacturing_defect_rate_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "room_temperature": {
+        "series_name": "Office Room Temperature",
+        "unit": "degrees C",
+        "frequency": "hourly",
+        "time_axis_range": [
+            "2024-01-01T00:00:00",
+            "2024-01-02T23:00:00"
+        ],
+        "value_axis_range": [
+            20.647476475167338,
+            21.31607673473297
+        ],
+        "image_file": "room_temperature.png",
+        "ground_truth_file": "room_temperature_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "machine_vibration": {
+        "series_name": "Machine Vibration",
+        "unit": "mm/s",
+        "frequency": "10 minutes",
+        "time_axis_range": [
+            "2024-02-01T08:00:00",
+            "2024-02-02T07:50:00"
+        ],
+        "value_axis_range": [
+            2.5811583473418214,
+            7.122476219406597
+        ],
+        "image_file": "machine_vibration.png",
+        "ground_truth_file": "machine_vibration_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "electricity_demand": {
+        "series_name": "Electricity Demand",
+        "unit": "kW",
+        "frequency": "hourly",
+        "time_axis_range": [
+            "2024-03-01T00:00:00",
+            "2024-03-07T23:00:00"
+        ],
+        "value_axis_range": [
+            191.16927559744,
+            298.71668720629833
+        ],
+        "image_file": "electricity_demand.png",
+        "ground_truth_file": "electricity_demand_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "daily_rainfall_obscured": {
+        "series_name": "Daily Rainfall",
+        "unit": "mm",
+        "frequency": "daily",
+        "time_axis_range": [
+            "2024-04-01T00:00:00",
+            "2024-05-30T00:00:00"
+        ],
+        "value_axis_range": [
+            0.0,
+            22.94467922401036
+        ],
+        "image_file": "daily_rainfall_obscured.png",
+        "ground_truth_file": "daily_rainfall_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": "The chart contains an intentionally obscured segment."
+    },
+    "annual_energy_consumption": {
+        "series_name": "Annual Energy Consumption",
+        "unit": "MWh",
+        "frequency": "yearly",
+        "time_axis_range": [
+            "2000-01-01T00:00:00",
+            "2019-01-01T00:00:00"
+        ],
+        "value_axis_range": [
+            956018.7524234451,
+            1035924.4532814109
+        ],
+        "image_file": "annual_energy_consumption.png",
+        "ground_truth_file": "annual_energy_consumption_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
+    },
+    "website_visits_low_resolution": {
+        "series_name": "Website Visits",
+        "unit": "visits",
+        "frequency": "daily",
+        "time_axis_range": [
+            "2024-05-01T00:00:00",
+            "2024-06-14T00:00:00"
+        ],
+        "value_axis_range": [
+            751.6236469618036,
+            1395.4183842913733
+        ],
+        "image_file": "website_visits_low_resolution.png",
+        "ground_truth_file": "website_visits_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": "The chart intentionally has low image resolution."
+    },
+    "unsupported_multiple_lines": {
+        "series_name": "Two-Machine Energy Consumption",
+        "unit": "kWh",
+        "frequency": "daily",
+        "time_axis_range": [
+            "2024-06-01T00:00:00",
+            "2024-07-15T00:00:00"
+        ],
+        "value_axis_range": [
+            99.09030886928798,
+            154.94163009053997
+        ],
+        "image_file": "unsupported_multiple_lines.png",
+        "ground_truth_file": "unsupported_multiple_lines_ground_truth.csv",
+        "supported_by_mvp": false,
+        "warning": "The chart contains two plotted lines. The MVP supports only one line."
+    }
+}
