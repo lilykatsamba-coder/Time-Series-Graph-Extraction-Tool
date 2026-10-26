@@ -1,7 +1,7 @@
 import datetime
 import os
 import tempfile
-
+import pandas as pd
 import cv2
 import streamlit as st
 
@@ -52,6 +52,48 @@ def parse_numeric_value(value):
     except ValueError:
         return None
 
+def prepare_csv_download(
+    observations,
+    metadata
+):
+    """Format extracted observations for CSV download."""
+
+    csv_observations = observations.copy()
+
+    if "timestamp" not in csv_observations.columns:
+        return csv_observations.to_csv(
+            index=False
+        )
+
+    if metadata["time_representation"] == (
+        "Calendar date/time"
+    ):
+        timestamps = pd.to_datetime(
+            csv_observations["timestamp"]
+        )
+
+        if metadata["time_unit"] in [
+            "days",
+            "weeks",
+            "months",
+            "years"
+        ]:
+            csv_observations["timestamp"] = (
+                timestamps.dt.strftime(
+                    "%Y-%m-%d"
+                )
+            )
+
+        else:
+            csv_observations["timestamp"] = (
+                timestamps.dt.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            )
+
+    return csv_observations.to_csv(
+        index=False
+    )
 
 st.title("Time Series Graph Extraction Tool")
 
@@ -679,8 +721,8 @@ if uploaded_file is not None and metadata_confirmed:
             )
 
             st.caption(
-                "The uploaded graph image is preserved unchanged. "
-                "The confirmed metadata name labels the extracted result."
+                "The image below shows the detected line and barriers of the uploaded graph. "
+                "You can determine the accuracy of the data extraction through this visual:"
             )
 
             if extraction["warnings"]:
@@ -711,6 +753,25 @@ if uploaded_file is not None and metadata_confirmed:
                 displayed_observations,
                 width="stretch",
                 hide_index=True
+            )
+
+            csv_data = prepare_csv_download(
+                displayed_observations,
+                metadata
+            )
+
+            safe_series_name = "".join(
+                character
+                if character.isalnum()
+                else "_"
+                for character in metadata["series_name"]
+            ).strip("_") or "extracted_data"
+
+            st.download_button(
+                "Download CSV",
+                data=csv_data,
+                file_name=f"{safe_series_name}.csv",
+                mime="text/csv"
             )
 
             st.caption(
