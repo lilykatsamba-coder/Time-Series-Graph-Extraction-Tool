@@ -206,9 +206,9 @@ else:
                 "minutes",
                 "hours",
                 "days",
+                "weeks",
                 "months",
-                "years",
-                "custom"
+                "years"
             ]
 
             saved_time_unit = saved_metadata.get(
@@ -218,8 +218,6 @@ else:
 
             if saved_time_unit in time_unit_options:
                 time_unit_selection = saved_time_unit
-            elif saved_time_unit:
-                time_unit_selection = "custom"
             else:
                 time_unit_selection = "Select a time unit"
 
@@ -230,18 +228,6 @@ else:
                     time_unit_selection
                 )
             )
-
-            custom_time_unit = ""
-
-            if time_unit == "custom":
-                custom_time_unit = st.text_input(
-                    "Custom time-axis unit",
-                    value=saved_metadata.get(
-                        "custom_time_unit",
-                        ""
-                    ),
-                    placeholder="For example: weeks"
-                )
 
             # Dynamic time-axis fields
             if time_representation == (
@@ -277,6 +263,7 @@ else:
 
                 elif time_unit in [
                     "days",
+                    "weeks",
                     "months",
                     "years"
                 ]:
@@ -399,14 +386,6 @@ else:
                     "Please select a time-axis unit."
                 )
 
-            if (
-                time_unit == "custom"
-                and not custom_time_unit.strip()
-            ):
-                validation_errors.append(
-                    "Please enter the custom time-axis unit."
-                )
-
             # Time range validation
             if time_input_mode == "numeric":
                 parsed_start = parse_numeric_value(time_start)
@@ -458,16 +437,7 @@ else:
                     st.error(error)
 
             else:
-                if time_unit == "custom":
-                    confirmed_time_unit = (
-                        custom_time_unit.strip()
-                    )
-                    stored_custom_time_unit = (
-                        custom_time_unit.strip()
-                    )
-                else:
-                    confirmed_time_unit = time_unit
-                    stored_custom_time_unit = ""
+                confirmed_time_unit = time_unit
 
                 st.session_state["metadata"] = {
                     "series_name": series_name.strip(),
@@ -477,9 +447,6 @@ else:
                     "time_representation": time_representation,
                     "frequency_value": parsed_frequency,
                     "time_unit": confirmed_time_unit,
-                    "custom_time_unit": (
-                        stored_custom_time_unit
-                    ),
                     "time_axis_start": (
                         parsed_start.isoformat()
                         if hasattr(
@@ -582,6 +549,7 @@ else:
 
             elif metadata["time_unit"] in [
                 "days",
+                "weeks",
                 "months",
                 "years"
             ]:
@@ -706,6 +674,15 @@ if uploaded_file is not None and metadata_confirmed:
                 "Extraction completed successfully."
             )
 
+            st.subheader(
+                f"Extraction result: {metadata['series_name']}"
+            )
+
+            st.caption(
+                "The uploaded graph image is preserved unchanged. "
+                "The confirmed metadata name labels the extracted result."
+            )
+
             if extraction["warnings"]:
                 for warning in extraction["warnings"]:
                     st.warning(warning)
@@ -722,8 +699,16 @@ if uploaded_file is not None and metadata_confirmed:
                 "Extracted observations"
             )
 
+            displayed_observations = (
+                extraction["observations"]
+                .drop(
+                    columns=["extraction_error"],
+                    errors="ignore"
+                )
+            )
+
             st.dataframe(
-                extraction["observations"],
+                displayed_observations,
                 width="stretch",
                 hide_index=True
             )
