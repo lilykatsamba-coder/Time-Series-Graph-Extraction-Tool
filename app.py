@@ -1,6 +1,11 @@
 import datetime
-
+import os
+import tempfile
+import pandas as pd
+import cv2
 import streamlit as st
+
+from src.extractor import extract_chart_data
 
 
 st.set_page_config(
@@ -47,6 +52,48 @@ def parse_numeric_value(value):
     except ValueError:
         return None
 
+def prepare_csv_download(
+    observations,
+    metadata
+):
+    """Format extracted observations for CSV download."""
+
+    csv_observations = observations.copy()
+
+    if "timestamp" not in csv_observations.columns:
+        return csv_observations.to_csv(
+            index=False
+        )
+
+    if metadata["time_representation"] == (
+        "Calendar date/time"
+    ):
+        timestamps = pd.to_datetime(
+            csv_observations["timestamp"]
+        )
+
+        if metadata["time_unit"] in [
+            "days",
+            "weeks",
+            "months",
+            "years"
+        ]:
+            csv_observations["timestamp"] = (
+                timestamps.dt.strftime(
+                    "%Y-%m-%d"
+                )
+            )
+
+        else:
+            csv_observations["timestamp"] = (
+                timestamps.dt.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            )
+
+    return csv_observations.to_csv(
+        index=False
+    )
 
 st.title("Time Series Graph Extraction Tool")
 
@@ -76,13 +123,14 @@ else:
         st.session_state["uploaded_file_id"] = current_file_id
         st.session_state["metadata"] = {}
         st.session_state["metadata_confirmed"] = False
+        st.session_state["extraction"] = None
 
     st.success(f"Uploaded file: {uploaded_file.name}")
 
     st.image(
         uploaded_file,
         caption="Uploaded graph",
-        use_container_width=True
+        width="stretch"
     )
 
     st.divider()
@@ -200,9 +248,9 @@ else:
                 "minutes",
                 "hours",
                 "days",
+                "weeks",
                 "months",
-                "years",
-                "custom"
+                "years"
             ]
 
             saved_time_unit = saved_metadata.get(
@@ -212,8 +260,6 @@ else:
 
             if saved_time_unit in time_unit_options:
                 time_unit_selection = saved_time_unit
-            elif saved_time_unit:
-                time_unit_selection = "custom"
             else:
                 time_unit_selection = "Select a time unit"
 
@@ -224,18 +270,6 @@ else:
                     time_unit_selection
                 )
             )
-
-            custom_time_unit = ""
-
-            if time_unit == "custom":
-                custom_time_unit = st.text_input(
-                    "Custom time-axis unit",
-                    value=saved_metadata.get(
-                        "custom_time_unit",
-                        ""
-                    ),
-                    placeholder="For example: weeks"
-                )
 
             # Dynamic time-axis fields
             if time_representation == (
@@ -271,6 +305,7 @@ else:
 
                 elif time_unit in [
                     "days",
+                    "weeks",
                     "months",
                     "years"
                 ]:
@@ -393,14 +428,6 @@ else:
                     "Please select a time-axis unit."
                 )
 
-            if (
-                time_unit == "custom"
-                and not custom_time_unit.strip()
-            ):
-                validation_errors.append(
-                    "Please enter the custom time-axis unit."
-                )
-
             # Time range validation
             if time_input_mode == "numeric":
                 parsed_start = parse_numeric_value(time_start)
@@ -452,16 +479,7 @@ else:
                     st.error(error)
 
             else:
-                if time_unit == "custom":
-                    confirmed_time_unit = (
-                        custom_time_unit.strip()
-                    )
-                    stored_custom_time_unit = (
-                        custom_time_unit.strip()
-                    )
-                else:
-                    confirmed_time_unit = time_unit
-                    stored_custom_time_unit = ""
+                confirmed_time_unit = time_unit
 
                 st.session_state["metadata"] = {
                     "series_name": series_name.strip(),
@@ -471,9 +489,6 @@ else:
                     "time_representation": time_representation,
                     "frequency_value": parsed_frequency,
                     "time_unit": confirmed_time_unit,
-                    "custom_time_unit": (
-                        stored_custom_time_unit
-                    ),
                     "time_axis_start": (
                         parsed_start.isoformat()
                         if hasattr(
@@ -493,6 +508,7 @@ else:
                 }
 
                 st.session_state["metadata_confirmed"] = True
+                st.session_state["extraction"] = None
 
                 st.rerun()
 
@@ -575,6 +591,7 @@ else:
 
             elif metadata["time_unit"] in [
                 "days",
+                "weeks",
                 "months",
                 "years"
             ]:
@@ -613,5 +630,159 @@ else:
                 st.session_state[
                     "metadata_confirmed"
                 ] = False
+                st.session_state["extraction"] = None
                 st.rerun()
                 
+
+metadata_confirmed = st.session_state.get(
+    "metadata_confirmed",
+    False
+)
+
+metadata = st.session_state.get(
+    "metadata",
+    {}
+)
+
+if uploaded_file is not None and metadata_confirmed:
+    st.divider()
+    st.subheader("Extract data")
+
+    st.write(
+        "Run the extraction using the uploaded graph and confirmed metadata."
+    )
+
+    if st.button("Extract data"):
+        temporary_path = None
+
+        try:
+            file_suffix = os.path.splitext(
+                uploaded_file.name
+            )[1]
+
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=file_suffix
+            ) as temporary_file:
+                temporary_file.write(
+                    uploaded_file.getvalue()
+                )
+                temporary_path = temporary_file.name
+
+            extraction_result = extract_chart_data(
+                temporary_path,
+                metadata
+            )
+
+            if extraction_result.success:
+                annotated_image_rgb = cv2.cvtColor(
+                    extraction_result.annotated_image,
+                    cv2.COLOR_BGR2RGB
+                )
+
+                st.session_state["extraction"] = {
+                    "success": True,
+                    "annotated_image": annotated_image_rgb,
+                    "observations": (
+                        extraction_result.observations
+                    ),
+                    "warnings": (
+                        extraction_result.warnings
+                    ),
+                    "diagnostics": (
+                        extraction_result.diagnostics
+                    )
+                }
+
+            else:
+                st.session_state["extraction"] = {
+                    "success": False,
+                    "warnings": (
+                        extraction_result.warnings
+                    )
+                }
+
+        finally:
+            if temporary_path is not None:
+                os.unlink(temporary_path)
+
+    extraction = st.session_state.get(
+        "extraction"
+    )
+
+    if extraction is not None:
+        if extraction["success"]:
+            st.success(
+                "Extraction completed successfully."
+            )
+
+            st.subheader(
+                f"Extraction result: {metadata['series_name']}"
+            )
+
+            st.caption(
+                "The image below shows the detected line and barriers of the uploaded graph. "
+                "You can determine the accuracy of the data extraction through this visual:"
+            )
+
+            if extraction["warnings"]:
+                for warning in extraction["warnings"]:
+                    st.warning(warning)
+
+            st.image(
+                extraction["annotated_image"],
+                caption=(
+                    "Detected line and plot boundaries"
+                ),
+                width="stretch"
+            )
+
+            st.subheader(
+                "Extracted observations"
+            )
+
+            displayed_observations = (
+                extraction["observations"]
+                .drop(
+                    columns=["extraction_error"],
+                    errors="ignore"
+                )
+            )
+
+            st.dataframe(
+                displayed_observations,
+                width="stretch",
+                hide_index=True
+            )
+
+            csv_data = prepare_csv_download(
+                displayed_observations,
+                metadata
+            )
+
+            safe_series_name = "".join(
+                character
+                if character.isalnum()
+                else "_"
+                for character in metadata["series_name"]
+            ).strip("_") or "extracted_data"
+
+            st.download_button(
+                "Download CSV",
+                data=csv_data,
+                file_name=f"{safe_series_name}.csv",
+                mime="text/csv"
+            )
+
+            st.caption(
+                f"Extracted {len(extraction['observations'])} "
+                "pixel-level observations."
+            )
+
+        else:
+            st.error(
+                "Extraction could not be completed."
+            )
+
+            for warning in extraction["warnings"]:
+                st.warning(warning)

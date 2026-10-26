@@ -7,6 +7,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 
 
@@ -68,6 +69,96 @@ RANDOM_SEED = 42
 rng = np.random.default_rng(RANDOM_SEED)
 
 metadata = {}
+
+
+# =========================================================
+# Axis-limit helpers
+# =========================================================
+
+def calculate_axis_limits(timestamps, values):
+    """Calculate explicit chart-axis limits with 5% margins."""
+
+    timestamp_series = pd.Series(timestamps)
+
+    if pd.api.types.is_numeric_dtype(timestamp_series):
+        x_min = float(timestamp_series.iloc[0])
+        x_max = float(timestamp_series.iloc[-1])
+    else:
+        x_min = pd.Timestamp(timestamp_series.iloc[0])
+        x_max = pd.Timestamp(timestamp_series.iloc[-1])
+
+    y_min = float(np.min(values))
+    y_max = float(np.max(values))
+
+    if x_min == x_max:
+        if isinstance(x_min, pd.Timestamp):
+            x_margin = pd.Timedelta(days=1)
+        else:
+            x_margin = 1
+    else:
+        if isinstance(x_min, pd.Timestamp):
+            x_margin = pd.Timedelta(0)
+        else:
+            x_margin = 0
+
+    if y_min == y_max:
+        y_margin = 1
+    else:
+        y_margin = (y_max - y_min) * 0.05
+
+    return (
+        x_min - x_margin,
+        x_max + x_margin,
+        y_min - y_margin,
+        y_max + y_margin
+    )
+
+
+def add_endpoint_ticks(axis, timestamps):
+    """Ensure the first and last time values are visibly labeled."""
+
+    timestamp_series = pd.Series(timestamps)
+
+    if pd.api.types.is_numeric_dtype(timestamp_series):
+        endpoint_ticks = np.array([
+            float(timestamp_series.iloc[0]),
+            float(timestamp_series.iloc[-1])
+        ])
+    else:
+        endpoint_ticks = mdates.date2num([
+            pd.Timestamp(
+                timestamp_series.iloc[0]
+            ).to_pydatetime(),
+            pd.Timestamp(
+                timestamp_series.iloc[-1]
+            ).to_pydatetime()
+        ])
+
+    existing_ticks = np.asarray(
+        axis.get_xticks(),
+        dtype=float
+    )
+
+    all_ticks = np.unique(
+        np.concatenate([
+            existing_ticks,
+            endpoint_ticks
+        ])
+    )
+
+    axis.set_xticks(all_ticks)
+
+
+def apply_axis_limits(axis, timestamps, values):
+    """Apply the calculated axis limits to a chart."""
+
+    x_min, x_max, y_min, y_max = calculate_axis_limits(
+        timestamps,
+        values
+    )
+
+    axis.set_xlim(x_min, x_max)
+    axis.set_ylim(y_min, y_max)
 
 
 # =========================================================
@@ -138,6 +229,16 @@ def save_metadata(
         frequency
     )
 
+    (
+        time_axis_min,
+        time_axis_max,
+        value_axis_min,
+        value_axis_max
+    ) = calculate_axis_limits(
+        timestamps,
+        values
+    )
+
     metadata[case_id] = {
         "series_name": series_name,
         "unit": unit,
@@ -146,12 +247,12 @@ def save_metadata(
         "frequency_value": frequency_value,
         "time_unit": time_unit,
         "time_axis_range": [
-            pd.Timestamp(timestamps[0]).isoformat(),
-            pd.Timestamp(timestamps[-1]).isoformat()
+            pd.Timestamp(time_axis_min).isoformat(),
+            pd.Timestamp(time_axis_max).isoformat()
         ],
         "value_axis_range": [
-            float(np.min(values)),
-            float(np.max(values))
+            float(value_axis_min),
+            float(value_axis_max)
         ],
         "image_file": image_filename,
         "ground_truth_file": ground_truth_filename,
@@ -175,6 +276,16 @@ def save_numeric_metadata(
 ):
     """Store metadata for an elapsed or numeric-time test case."""
 
+    (
+        time_axis_min,
+        time_axis_max,
+        value_axis_min,
+        value_axis_max
+    ) = calculate_axis_limits(
+        time_values,
+        values
+    )
+
     metadata[case_id] = {
         "series_name": series_name,
         "unit": unit,
@@ -183,12 +294,12 @@ def save_numeric_metadata(
         "frequency_value": float(frequency_value),
         "time_unit": time_unit,
         "time_axis_range": [
-            float(time_values[0]),
-            float(time_values[-1])
+            float(time_axis_min),
+            float(time_axis_max)
         ],
         "value_axis_range": [
-            float(np.min(values)),
-            float(np.max(values))
+            float(value_axis_min),
+            float(value_axis_max)
         ],
         "image_file": image_filename,
         "ground_truth_file": ground_truth_filename,
@@ -226,6 +337,17 @@ def save_chart(
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
     axis.grid(True, alpha=0.3)
+
+    apply_axis_limits(
+        axis,
+        timestamps,
+        values
+    )
+
+    add_endpoint_ticks(
+        axis,
+        timestamps
+    )
 
     figure.autofmt_xdate()
     figure.tight_layout()
@@ -272,6 +394,17 @@ def save_obscured_chart(
     axis.set_xlabel(x_label)
     axis.set_ylabel(y_label)
     axis.grid(True, alpha=0.3)
+
+    apply_axis_limits(
+        axis,
+        timestamps,
+        values
+    )
+
+    add_endpoint_ticks(
+        axis,
+        timestamps
+    )
 
     figure.autofmt_xdate()
     figure.tight_layout()
@@ -704,6 +837,17 @@ axis.set_xlabel("Time (day)")
 axis.set_ylabel("Energy Consumption (kWh)")
 axis.legend()
 axis.grid(True, alpha=0.3)
+
+all_unsupported_values = np.concatenate([
+    machine_a,
+    machine_b
+])
+
+apply_axis_limits(
+    axis,
+    timestamps,
+    all_unsupported_values
+)
 
 figure.autofmt_xdate()
 figure.tight_layout()

@@ -11,8 +11,8 @@
             "2024-12-01T00:00:00"
         ],
         "value_axis_range": [
-            12076.179269938608,
-            24611.3676294828
+            11449.419851961398,
+            25238.12704746001
         ],
         "image_file": "product_sales.png",
         "ground_truth_file": "product_sales_ground_truth.csv",
@@ -31,8 +31,8 @@
             "2024-01-01T00:00:00"
         ],
         "value_axis_range": [
-            2.6938796960771905,
-            11.892918044459224
+            2.2339277786580887,
+            12.352869961878325
         ],
         "image_file": "manufacturing_defect_rate.png",
         "ground_truth_file": "manufacturing_defect_rate_ground_truth.csv",
@@ -51,8 +51,8 @@
             "2024-01-02T23:00:00"
         ],
         "value_axis_range": [
-            20.647476475167338,
-            21.31607673473297
+            20.614046462189055,
+            21.349506747711253
         ],
         "image_file": "room_temperature.png",
         "ground_truth_file": "room_temperature_ground_truth.csv",
@@ -71,8 +71,8 @@
             "2024-02-02T07:50:00"
         ],
         "value_axis_range": [
-            2.5811583473418214,
-            7.122476219406597
+            2.354092453738583,
+            7.349542113009836
         ],
         "image_file": "machine_vibration.png",
         "ground_truth_file": "machine_vibration_ground_truth.csv",
@@ -91,8 +91,8 @@
             "2024-03-07T23:00:00"
         ],
         "value_axis_range": [
-            191.16927559744,
-            298.71668720629833
+            185.79190501699708,
+            304.09405778674125
         ],
         "image_file": "electricity_demand.png",
         "ground_truth_file": "electricity_demand_ground_truth.csv",
@@ -111,8 +111,8 @@
             "2024-05-30T00:00:00"
         ],
         "value_axis_range": [
-            0.0,
-            22.94467922401036
+            -1.147233961200518,
+            24.091913185210878
         ],
         "image_file": "daily_rainfall_obscured.png",
         "ground_truth_file": "daily_rainfall_ground_truth.csv",
@@ -131,8 +131,8 @@
             "2019-01-01T00:00:00"
         ],
         "value_axis_range": [
-            956018.7524234451,
-            1035924.4532814109
+            952023.4673805468,
+            1039919.7383243091
         ],
         "image_file": "annual_energy_consumption.png",
         "ground_truth_file": "annual_energy_consumption_ground_truth.csv",
@@ -151,8 +151,8 @@
             "2024-06-14T00:00:00"
         ],
         "value_axis_range": [
-            751.6236469618036,
-            1395.4183842913733
+            719.4339100953251,
+            1427.6081211578517
         ],
         "image_file": "website_visits_low_resolution.png",
         "ground_truth_file": "website_visits_ground_truth.csv",
@@ -171,8 +171,8 @@
             "2024-07-15T00:00:00"
         ],
         "value_axis_range": [
-            99.09030886928798,
-            154.94163009053997
+            96.29774280822538,
+            157.73419615160256
         ],
         "image_file": "unsupported_multiple_lines.png",
         "ground_truth_file": "unsupported_multiple_lines_ground_truth.csv",
@@ -191,8 +191,8 @@
             30.0
         ],
         "value_axis_range": [
-            10.209398679374305,
-            12.561723236128515
+            10.091782451536593,
+            12.679339463966226
         ],
         "image_file": "battery_discharge_elapsed_time.png",
         "ground_truth_file": "battery_discharge_elapsed_time_ground_truth.csv",
