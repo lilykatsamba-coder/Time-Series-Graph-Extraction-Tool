@@ -220,8 +220,24 @@ def detect_plot_bounds(
                 "or the plotted line extent."
             )
 
-        left, right = blue_line_extent
-        detection_method = "plotted_line_extent"
+        blue_left, blue_right = blue_line_extent
+
+        # Preserve a plausible isolated left spine if one exists.
+        # The plotted line may start inside the plot area because
+        # the chart has an x-axis margin.
+        left_candidates = vertical_columns[
+            vertical_columns < image_width * 0.5
+        ]
+
+        if len(left_candidates) > 0:
+            left = float(np.min(left_candidates))
+        else:
+            left = blue_left
+
+        right = blue_right
+        detection_method = (
+            "left_spine_and_plotted_line_extent"
+        )
 
     if left >= right:
         raise ValueError(

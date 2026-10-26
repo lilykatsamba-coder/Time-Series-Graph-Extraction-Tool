@@ -89,10 +89,19 @@ def calculate_axis_limits(timestamps, values):
     y_min = float(np.min(values))
     y_max = float(np.max(values))
 
+    # The generated charts use the first and last data timestamps
+    # as the effective x-axis limits.
     if x_min == x_max:
-        x_margin = 1
+        if isinstance(x_min, pd.Timestamp):
+            x_margin = pd.Timedelta(days=1)
+        else:
+            x_margin = 1
+
     else:
-        x_margin = (x_max - x_min) * 0.05
+        if isinstance(x_min, pd.Timestamp):
+            x_margin = pd.Timedelta(0)
+        else:
+            x_margin = 0
 
     if y_min == y_max:
         y_margin = 1

@@ -66,6 +66,16 @@ class TestPlotDetection(unittest.TestCase):
             image_width * 0.5
         )
 
+        self.assertLess(
+            bounds.left,
+            image_width * 0.2
+        )
+
+        self.assertGreater(
+            bounds.right,
+            image_width * 0.8
+        )
+
     def test_missing_image_raises_error(self):
         with self.assertRaises(FileNotFoundError):
             detect_plot_bounds(

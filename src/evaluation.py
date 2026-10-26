@@ -19,10 +19,12 @@ def _convert_time_to_numeric(
     timestamps
 ):
     """
-    Convert timestamps to a numeric axis for interpolation.
+    Convert timestamps to seconds from the Unix epoch.
 
     Numeric elapsed-time values remain numeric.
-    Calendar timestamps are converted to seconds.
+    Calendar timestamps are converted using timedelta
+    arithmetic so the result is independent of Pandas' internal
+    datetime resolution.
     """
 
     series = pd.Series(timestamps)
@@ -32,10 +34,16 @@ def _convert_time_to_numeric(
 
     datetime_values = pd.to_datetime(series)
 
-    return (
-        datetime_values.astype("int64").to_numpy()
-        / 1_000_000_000
+    epoch = pd.Timestamp(
+        "1970-01-01T00:00:00"
     )
+
+    return (
+        (
+            datetime_values - epoch
+        )
+        / pd.Timedelta(seconds=1)
+    ).to_numpy(dtype=float)
 
 
 def evaluate_extraction(
