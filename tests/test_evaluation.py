@@ -166,7 +166,15 @@ class TestExtractionEvaluation(unittest.TestCase):
                 case_metadata[
                     "value_axis_range"
                 ][1]
-            )
+            ),
+            "frequency_value": (
+                case_metadata[
+                    "frequency_value"
+                ]
+            ),
+            "time_unit": case_metadata[
+                "time_unit"
+            ]
         }
 
         extraction_result = extract_chart_data(

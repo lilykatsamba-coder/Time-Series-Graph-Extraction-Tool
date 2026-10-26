@@ -197,7 +197,7 @@ Run the automated tests from the repository root:
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-The current extraction test suite contains 25 tests.
+The current extraction test suite contains 26 tests, including explicit coverage for weekly frequency extraction.
 
 The test data can be regenerated with:
 
@@ -205,27 +205,48 @@ The test data can be regenerated with:
 python scripts/generate_test_charts.py
 ```
 
-The generator creates reproducible synthetic charts, corresponding ground-truth CSV files, and metadata.
+The generator creates 11 reproducible synthetic chart cases, corresponding ground-truth CSV files, and metadata.
+
+The generated cases cover:
+
+- Increasing monthly data.
+- Decreasing yearly data.
+- Hourly temperature data.
+- Noisy machine-vibration data.
+- Hourly electricity demand.
+- Obscured daily rainfall data.
+- Yearly energy consumption.
+- Low-resolution daily website visits.
+- Elapsed-time battery discharge data.
+- Unsupported multiple-line input.
+- Weekly customer orders.
 
 ## Extraction benchmark
 
-The current benchmark uses normalized mean absolute error relative to each ground-truth value range.
+The benchmark evaluates the frequency-aligned observations returned to the user, rather than the internal pixel-level samples.
 
-Current results for the supported synthetic cases are:
+The normalized mean absolute error is calculated relative to each ground-truth value range.
+
+Current results are:
 
 | Test case | Normalized mean error |
 |---|---:|
-| Product sales | 0.0755% |
-| Manufacturing defect rate | 0.0958% |
-| Room temperature | 0.1470% |
-| Machine vibration | 13.5000% |
-| Electricity demand | 0.7787% |
-| Daily rainfall, obscured | 0.5996% |
-| Annual energy consumption | 0.1083% |
-| Website visits, low resolution | 0.8687% |
-| Battery discharge, elapsed time | 0.0920% |
+| Product sales | 0.1343% |
+| Manufacturing defect rate | 0.1197% |
+| Room temperature | 0.5866% |
+| Machine vibration | 16.1582% |
+| Electricity demand | 1.4145% |
+| Daily rainfall, obscured | 3.9525% |
+| Annual energy consumption | 0.3018% |
+| Website visits, low resolution | 1.1888% |
+| Battery discharge, elapsed time | 0.0788% |
+| Weekly customer orders | 0.2236% |
 
-The machine-vibration case is a documented limitation. Its noisy, rapidly changing curve is more difficult to recover accurately from raster pixels. The general calibration and extraction approach performs below 1% normalized mean error on the other eight supported cases.
+The benchmark now evaluates the same frequency-aligned data that appears in the application table and CSV output. For example, the product-sales case is evaluated at 24 monthly observations, while the weekly customer-orders case is evaluated at 52 weekly observations.
+
+The machine-vibration case remains the main documented limitation. Its noisy, rapidly changing curve is more difficult to recover accurately from raster pixels. The obscured daily-rainfall case also has higher error because part of the plotted line is intentionally hidden.
+
+The results demonstrate strong extraction performance for the supported synthetic cases while preserving the limitations of difficult or degraded input images honestly.
 
 ## Forecasting roadmap
 

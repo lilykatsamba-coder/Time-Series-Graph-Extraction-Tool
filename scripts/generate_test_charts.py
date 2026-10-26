@@ -202,7 +202,8 @@ def get_calendar_frequency_details(frequency):
         "yearly": (1, "years"),
         "hourly": (1, "hours"),
         "10 minutes": (10, "minutes"),
-        "daily": (1, "days")
+        "daily": (1, "days"),
+        "weekly": (1, "weeks")
     }
 
     return frequency_details.get(
@@ -914,6 +915,51 @@ save_numeric_metadata(
     ground_truth_filename=(
         "battery_discharge_elapsed_time_ground_truth.csv"
     )
+)
+
+
+# =========================================================
+# 11. Weekly customer orders
+# =========================================================
+
+timestamps = pd.date_range(
+    start="2024-01-07",
+    periods=52,
+    freq="W-SUN"
+)
+
+values = (
+    850
+    + np.arange(52) * 7
+    + 45 * np.sin(np.arange(52) / 3.5)
+    + rng.normal(0, 22, 52)
+)
+
+save_ground_truth(
+    "weekly_customer_orders_ground_truth.csv",
+    timestamps,
+    values
+)
+
+save_chart(
+    "weekly_customer_orders.png",
+    timestamps,
+    values,
+    title="Weekly Customer Orders",
+    x_label="Time (week)",
+    y_label="Orders",
+    marker="o"
+)
+
+save_metadata(
+    "weekly_customer_orders",
+    "Weekly Customer Orders",
+    "orders",
+    "weekly",
+    timestamps,
+    values,
+    "weekly_customer_orders.png",
+    "weekly_customer_orders_ground_truth.csv"
 )
 
 
