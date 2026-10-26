@@ -198,5 +198,25 @@
         "ground_truth_file": "battery_discharge_elapsed_time_ground_truth.csv",
         "supported_by_mvp": true,
         "warning": null
+    },
+    "weekly_customer_orders": {
+        "series_name": "Weekly Customer Orders",
+        "unit": "orders",
+        "frequency": "weekly",
+        "time_representation": "Calendar date/time",
+        "frequency_value": 1,
+        "time_unit": "weeks",
+        "time_axis_range": [
+            "2024-01-07T00:00:00",
+            "2024-12-29T00:00:00"
+        ],
+        "value_axis_range": [
+            795.5730970232757,
+            1292.0713689543256
+        ],
+        "image_file": "weekly_customer_orders.png",
+        "ground_truth_file": "weekly_customer_orders_ground_truth.csv",
+        "supported_by_mvp": true,
+        "warning": null
     }
 }
