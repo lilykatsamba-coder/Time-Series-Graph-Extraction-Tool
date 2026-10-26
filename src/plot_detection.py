@@ -78,48 +78,18 @@ def _find_long_vertical_columns(
     )[0]
 
 
-def _find_blue_line_x_extent(image):
-    """
-    Find the leftmost and rightmost x-coordinates of the
-    royalblue plotted line.
-
-    This is used as a fallback when vertical chart spines
-    cannot be detected reliably.
-    """
-
-    hsv_image = cv2.cvtColor(
-        image,
-        cv2.COLOR_BGR2HSV
-    )
-
-    lower_blue = np.array(
-        [90, 50, 40],
-        dtype=np.uint8
-    )
-
-    upper_blue = np.array(
-        [140, 255, 255],
-        dtype=np.uint8
-    )
-
-    blue_mask = cv2.inRange(
+def _find_colored_line_x_extent(image):
+    """Find the horizontal extent of a clearly colored plotted line."""
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    colored_mask = cv2.inRange(
         hsv_image,
-        lower_blue,
-        upper_blue
+        np.array([0, 70, 45], dtype=np.uint8),
+        np.array([179, 255, 255], dtype=np.uint8),
     )
-
-    y_coordinates, x_coordinates = np.where(
-        blue_mask > 0
-    )
-
+    y_coordinates, x_coordinates = np.where(colored_mask > 0)
     if len(x_coordinates) == 0:
         return None
-
-    return (
-        float(np.min(x_coordinates)),
-        float(np.max(x_coordinates))
-    )
-
+    return float(np.min(x_coordinates)), float(np.max(x_coordinates))
 
 def detect_plot_bounds(
     image_source: ImageSource
@@ -179,8 +149,8 @@ def detect_plot_bounds(
     )
 
     horizontal_rows = horizontal_rows[
-        (horizontal_rows > image_height * 0.02)
-        & (horizontal_rows < image_height * 0.98)
+    (horizontal_rows > image_height * 0.02)
+    & (horizontal_rows < image_height * 0.98)
     ]
 
     vertical_columns = vertical_columns[
@@ -196,48 +166,35 @@ def detect_plot_bounds(
     top = float(np.min(horizontal_rows))
     bottom = float(np.max(horizontal_rows))
 
-    vertical_span_is_valid = (
+    # Two adjacent pixels are one detected spine, not two plot boundaries.
+    # Require substantial horizontal separation before treating columns as
+    # the left and right boundaries. Otherwise use the colored-line fallback.
+    has_separate_vertical_boundaries = (
         len(vertical_columns) >= 2
         and (
-            np.max(vertical_columns)
-            - np.min(vertical_columns)
-        ) >= image_width * 0.5
+            float(np.max(vertical_columns))
+            - float(np.min(vertical_columns))
+        ) > image_width * 0.5
     )
 
-    if vertical_span_is_valid:
+    if has_separate_vertical_boundaries:
         left = float(np.min(vertical_columns))
         right = float(np.max(vertical_columns))
         detection_method = "chart_lines"
 
     else:
-        blue_line_extent = _find_blue_line_x_extent(
+        colored_line_extent = _find_colored_line_x_extent(
             image
         )
 
-        if blue_line_extent is None:
+        if colored_line_extent is None:
             raise ValueError(
-                "Could not detect valid vertical plot boundaries "
+                "Could not detect the vertical plot boundaries "
                 "or the plotted line extent."
             )
 
-        blue_left, blue_right = blue_line_extent
-
-        # Preserve a plausible isolated left spine if one exists.
-        # The plotted line may start inside the plot area because
-        # the chart has an x-axis margin.
-        left_candidates = vertical_columns[
-            vertical_columns < image_width * 0.5
-        ]
-
-        if len(left_candidates) > 0:
-            left = float(np.min(left_candidates))
-        else:
-            left = blue_left
-
-        right = blue_right
-        detection_method = (
-            "left_spine_and_plotted_line_extent"
-        )
+        left, right = colored_line_extent
+        detection_method = "plotted_line_extent"
 
     if left >= right:
         raise ValueError(
