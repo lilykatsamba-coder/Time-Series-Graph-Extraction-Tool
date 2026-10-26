@@ -7,6 +7,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 
 
@@ -89,14 +90,11 @@ def calculate_axis_limits(timestamps, values):
     y_min = float(np.min(values))
     y_max = float(np.max(values))
 
-    # The generated charts use the first and last data timestamps
-    # as the effective x-axis limits.
     if x_min == x_max:
         if isinstance(x_min, pd.Timestamp):
             x_margin = pd.Timedelta(days=1)
         else:
             x_margin = 1
-
     else:
         if isinstance(x_min, pd.Timestamp):
             x_margin = pd.Timedelta(0)
@@ -114,6 +112,41 @@ def calculate_axis_limits(timestamps, values):
         y_min - y_margin,
         y_max + y_margin
     )
+
+
+def add_endpoint_ticks(axis, timestamps):
+    """Ensure the first and last time values are visibly labeled."""
+
+    timestamp_series = pd.Series(timestamps)
+
+    if pd.api.types.is_numeric_dtype(timestamp_series):
+        endpoint_ticks = np.array([
+            float(timestamp_series.iloc[0]),
+            float(timestamp_series.iloc[-1])
+        ])
+    else:
+        endpoint_ticks = mdates.date2num([
+            pd.Timestamp(
+                timestamp_series.iloc[0]
+            ).to_pydatetime(),
+            pd.Timestamp(
+                timestamp_series.iloc[-1]
+            ).to_pydatetime()
+        ])
+
+    existing_ticks = np.asarray(
+        axis.get_xticks(),
+        dtype=float
+    )
+
+    all_ticks = np.unique(
+        np.concatenate([
+            existing_ticks,
+            endpoint_ticks
+        ])
+    )
+
+    axis.set_xticks(all_ticks)
 
 
 def apply_axis_limits(axis, timestamps, values):
@@ -311,6 +344,11 @@ def save_chart(
         values
     )
 
+    add_endpoint_ticks(
+        axis,
+        timestamps
+    )
+
     figure.autofmt_xdate()
     figure.tight_layout()
 
@@ -361,6 +399,11 @@ def save_obscured_chart(
         axis,
         timestamps,
         values
+    )
+
+    add_endpoint_ticks(
+        axis,
+        timestamps
     )
 
     figure.autofmt_xdate()

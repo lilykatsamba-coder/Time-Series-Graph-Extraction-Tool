@@ -1,6 +1,11 @@
 import datetime
+import os
+import tempfile
 
+import cv2
 import streamlit as st
+
+from src.extractor import extract_chart_data
 
 
 st.set_page_config(
@@ -76,6 +81,7 @@ else:
         st.session_state["uploaded_file_id"] = current_file_id
         st.session_state["metadata"] = {}
         st.session_state["metadata_confirmed"] = False
+        st.session_state["extraction"] = None
 
     st.success(f"Uploaded file: {uploaded_file.name}")
 
@@ -493,6 +499,7 @@ else:
                 }
 
                 st.session_state["metadata_confirmed"] = True
+                st.session_state["extraction"] = None
 
                 st.rerun()
 
@@ -613,5 +620,123 @@ else:
                 st.session_state[
                     "metadata_confirmed"
                 ] = False
+                st.session_state["extraction"] = None
                 st.rerun()
                 
+
+metadata_confirmed = st.session_state.get(
+    "metadata_confirmed",
+    False
+)
+
+metadata = st.session_state.get(
+    "metadata",
+    {}
+)
+
+if uploaded_file is not None and metadata_confirmed:
+    st.divider()
+    st.subheader("Extract data")
+
+    st.write(
+        "Run the extraction using the uploaded graph and confirmed metadata."
+    )
+
+    if st.button("Extract data"):
+        temporary_path = None
+
+        try:
+            file_suffix = os.path.splitext(
+                uploaded_file.name
+            )[1]
+
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=file_suffix
+            ) as temporary_file:
+                temporary_file.write(
+                    uploaded_file.getvalue()
+                )
+                temporary_path = temporary_file.name
+
+            extraction_result = extract_chart_data(
+                temporary_path,
+                metadata
+            )
+
+            if extraction_result.success:
+                annotated_image_rgb = cv2.cvtColor(
+                    extraction_result.annotated_image,
+                    cv2.COLOR_BGR2RGB
+                )
+
+                st.session_state["extraction"] = {
+                    "success": True,
+                    "annotated_image": annotated_image_rgb,
+                    "observations": (
+                        extraction_result.observations
+                    ),
+                    "warnings": (
+                        extraction_result.warnings
+                    ),
+                    "diagnostics": (
+                        extraction_result.diagnostics
+                    )
+                }
+
+            else:
+                st.session_state["extraction"] = {
+                    "success": False,
+                    "warnings": (
+                        extraction_result.warnings
+                    )
+                }
+
+        finally:
+            if temporary_path is not None:
+                os.unlink(temporary_path)
+
+    extraction = st.session_state.get(
+        "extraction"
+    )
+
+    if extraction is not None:
+        if extraction["success"]:
+            st.success(
+                "Extraction completed successfully."
+            )
+
+            if extraction["warnings"]:
+                for warning in extraction["warnings"]:
+                    st.warning(warning)
+
+            st.image(
+                extraction["annotated_image"],
+                caption=(
+                    "Detected line and plot boundaries"
+                ),
+                width="stretch"
+            )
+
+            st.subheader(
+                "Extracted observations"
+            )
+
+            st.dataframe(
+                extraction["observations"],
+                width="stretch",
+                hide_index=True
+            )
+
+            st.caption(
+                f"Extracted {len(extraction['observations'])} "
+                "pixel-level observations."
+            )
+
+        else:
+            st.error(
+                "Extraction could not be completed."
+            )
+
+            for warning in extraction["warnings"]:
+                st.warning(warning)
