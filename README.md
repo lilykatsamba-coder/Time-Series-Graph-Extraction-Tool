@@ -1,137 +1,236 @@
-# Time Series Graph Extraction and Forecasting Tool
+# Time-Series Graph Extraction and Forecasting Tool
+
+A desktop Streamlit application that reconstructs approximate time-series data from a digital graph image and forecasts future values from the extracted series.
+
+The tool is intended for situations where the original numerical dataset is unavailable but a plotted visualization still exists.
 
 ## Project overview
 
 This project is a desktop-only Streamlit web application that extracts time-series data from a digital 2D line graph.
+The application combines:
 
-The application is intended for situations where the original numerical dataset is unavailable but a graph image remains available. The user uploads a graph, confirms its metadata, and receives frequency-aligned observations that can be inspected and downloaded as CSV.
+1. **Computer vision** to detect a plotted line and the plot region in an uploaded graph image.
+2. **User-confirmed metadata** to map image pixels to timestamps and values.
+3. **An editable observation table** so the user can inspect and correct extracted data.
+4. **Holt linear exponential smoothing** to forecast future observations.
+5. **Expanding-window rolling validation** to evaluate historical forecast performance.
 
-Forecasting is planned for a later implementation stage and is not yet part of the current application workflow.
+The application is deliberately scoped as a focused MVP. It prioritizes transparency and user correction over attempting to support every chart type.
 
-## Current implementation status
+## Current capabilities
 
-The following functionality is currently implemented:
+The current version supports:
 
-- Streamlit web application.
-- PNG, JPG, and JPEG image upload.
-- Uploaded-image preview.
-- Manual metadata confirmation.
-- Calendar date/time axes.
-- Elapsed or numeric time axes.
-- Supported time units:
-  - seconds
-  - minutes
-  - hours
-  - days
-  - weeks
-  - months
-  - years
-- Automatic plotted-line detection using OpenCV.
-- Plot-boundary detection.
-- Pixel-to-time-series calibration.
-- Frequency-aligned observation generation.
-- Annotated-image display showing the detected line and plot boundaries.
-- Extracted-observation table.
-- Application-controlled CSV download with formatted timestamps.
-- Streamlit dataframe CSV download remains available as a secondary option.
-- Clear extraction warnings and failure messages.
-- Metadata editing and extraction-state reset.
+- Digital 2D line-graph images in PNG, JPG, or JPEG format.
+- One continuous, clearly colored time-series line.
+- Clearly colored lines such as blue, red, green, or orange.
+- Numeric or elapsed time axes.
+- Calendar date and date-time axes.
+- User-confirmed axis ranges, units, series name, and sampling frequency.
+- Frequency-aligned extracted observations.
+- Editable extracted timestamps and values.
+- CSV download of confirmed observations.
+- Holt linear exponential-smoothing forecasts.
+- User-selected forecast horizon.
+- User-selected absolute error tolerance.
+- Forecast visualization with Plotly.
+- Rolling historical validation using the same forecast horizon.
+- Mean absolute error reporting.
+- Historical tolerance-exceedance reporting.
+- Forecast CSV download.
+- Warnings for unrecognizable graphs, multiple plotted lines, and relatively low-resolution images.
 
-## Supported input
+## Supported input and current limitations
 
-The current MVP supports:
+The current version is designed for a **digital 2D graph containing one continuous, clearly colored time-series line**.
 
-- Digital 2D line graphs.
-- One plotted data series.
-- Clearly visible linear axes.
-- Calendar date/time axes.
-- Elapsed or numeric time axes.
-- PNG, JPG, and JPEG images.
+The following limitations apply:
 
-The current MVP does not support:
+- Multiple plotted lines are detected and rejected because the current version supports one series only.
+- Black, gray, or very low-saturation plotted lines are not reliably supported.
+- The chart should contain a continuous line. Obscured, fragmented, or heavily degraded lines may be rejected or produce less accurate values.
+- Low-resolution images may be processed, but the application warns the user to confirm the axis metadata carefully.
+- The application expects a digital chart image, not a photograph of a paper chart.
+- Bar charts, pie charts, scatter plots, 3D plots, and hand-drawn charts are outside the current scope.
+- OCR is not included. The user confirms the axis metadata manually.
+- Extracted values are approximate because they are reconstructed from pixels.
+- Forecast quality depends on the behavior of the series, the amount of historical data, and the selected forecast horizon.
+- The application does not claim that the historical exceedance proportion is an exact probability of future error.
 
-- Hand-drawn graphs.
-- Bar charts.
-- Multiple plotted lines.
-- 3D graphs.
-- Logarithmic axes.
-- OCR-based automatic metadata detection.
-- Mobile or tablet-specific layouts.
-- Multiple forecasting models.
-- Forecasting and rolling validation in the Streamlit workflow.
+## User workflow
 
-The user confirms the graph metadata manually because OCR is intentionally excluded from the current MVP.
+### 1. Upload a graph
 
-## Current user workflow
+Upload a PNG, JPG, or JPEG graph image.
 
-1. Launch the Streamlit application.
-2. Upload a supported graph image.
-3. Confirm the series name, value unit, value-axis range, time-axis representation, frequency, time unit, and time-axis range.
-4. Review the locked metadata.
-5. Select **Extract data**.
-6. Review the annotated graph and frequency-aligned observations.
-7. Download the observations as CSV.
-8. Edit the metadata or upload another graph if needed.
+Uploading only displays the image. Graph recognition starts when the user runs extraction after confirming metadata.
 
-The confirmed series name is used to label the extraction result. The uploaded graph image is preserved unchanged, including its original title.
+### 2. Confirm graph metadata
 
-## Frequency-aligned observations
+The user confirms or edits:
 
-The extractor initially detects the plotted line at pixel resolution. Those pixel-level samples are used internally to reconstruct the curve but are not presented as the final dataset.
+- Series name.
+- Values-axis unit.
+- Values-axis minimum and maximum.
+- Time-axis representation.
+- Time-axis frequency.
+- Time-axis unit.
+- Time-axis start and end.
 
-The reconstructed curve is resampled at the frequency confirmed by the user. For example, a monthly graph produces observations such as:
+This metadata is required to convert pixel positions into meaningful observations.
 
-```text
-2023-01-01 00:00:00
-2023-02-01 00:00:00
-2023-03-01 00:00:00
-```
+### 3. Extract and inspect data
 
-This prevents the application from presenting artificial timestamps generated from individual image pixels.
+The computer-vision pipeline detects the plotted line and plot boundaries, then reconstructs observations at the confirmed frequency.
 
-### Calendar-aware frequencies
+The application displays:
 
-Calendar-month and calendar-year frequencies use calendar-aware offsets rather than fixed durations. A monthly series advances from January 1 to February 1 to March 1, regardless of whether the previous month had 28, 29, 30, or 31 days.
+- The annotated graph.
+- Detected line points and plot boundaries.
+- The extracted observation table.
+- Any extraction warnings.
 
-Weekly frequencies use fixed seven-day intervals. Therefore, four weeks means a fixed 28-day interval and is not equivalent to one calendar month.
+### 4. Edit and confirm observations
 
-## CSV download behavior
+The user can edit timestamps and values. The observations must pass validation before they can be confirmed for forecasting.
 
-The extracted table provides two CSV download options:
+The application checks that:
 
-- **Streamlit dataframe download icon:** Exports the table using Streamlit's built-in dataframe behavior. This may represent calendar timestamps in full ISO format, for example `2023-05-21T00:00:00.000`.
-- **Application-controlled Download CSV button:** Formats timestamps for external use and is the recommended option.
+- Required timestamp and value columns exist.
+- Timestamps are valid.
+- Values are numeric.
+- Timestamps are unique.
+- Timestamps are in increasing order.
 
-The application-controlled CSV export uses:
+### 5. Configure and run forecasting
 
-- `YYYY-MM-DD` for date-based calendar frequencies such as days, weeks, months, and years.
-- `YYYY-MM-DD HH:MM:SS` for frequencies involving hours, minutes, or seconds.
-- Numeric values for elapsed or numeric time axes.
+After the observations are confirmed, the user selects:
 
-The user-facing CSV contains:
+- **Forecast horizon:** the number of future frequency-aligned observations to generate.
+- **Error tolerance:** an absolute threshold in the same units as the series values.
+
+The user then runs the forecast.
+
+### 6. Review and download results
+
+The application displays:
+
+- Confirmed historical observations.
+- Future forecast values.
+- A Plotly forecast chart.
+- Forecast values in a table.
+- A forecast CSV download.
+- Rolling-validation metrics and prediction details.
+
+## Computer-vision extraction
+
+The extraction pipeline uses classical computer vision with OpenCV:
+
+1. Load the image.
+2. Convert the image into color and grayscale representations.
+3. Segment strongly colored pixels to identify the plotted line.
+4. Use connected-component analysis to identify usable line regions.
+5. Detect dominant color groups to reject multiple colored series.
+6. Detect long horizontal and vertical chart structures to estimate plot boundaries.
+7. Extract pixel coordinates from the detected line.
+8. Convert pixel coordinates into timestamps and values using confirmed metadata.
+9. Resample the reconstructed curve to the requested frequency.
+
+This is a traditional image-processing approach. It does not use OCR, neural networks, or a deep-learning model.
+
+## Forecasting
+
+The current forecasting model is **Holt's linear exponential smoothing**, implemented with `statsmodels`.
+
+Holt's method is suitable for an ordered numeric series with a changing level and trend. It does not require seasonal configuration in the current MVP.
+
+The forecasting backend validates:
+
+- Required input columns.
+- Timestamp validity.
+- Numeric finite values.
+- Timestamp ordering and uniqueness.
+- Positive forecast horizons.
+- Numeric and supported time frequencies.
+
+## Rolling validation
+
+The application uses expanding-window rolling-origin validation.
+
+For each rolling origin:
+
+1. Fit Holt's model using observations available before the origin.
+2. Forecast the selected horizon.
+3. Compare the forecast with the next historical observations.
+4. Expand the training window by one observation.
+5. Repeat while a complete historical forecast window remains.
+
+For each prediction, the absolute error is:
+
+$$
+ e_i = |y_i - \hat{y}_i|
+$$
+
+The reported mean absolute error is:
+
+$$
+\mathrm{MAE} = \frac{1}{N}\sum_{i=1}^{N}|y_i - \hat{y}_i|
+$$
+
+The historical tolerance-exceedance proportion is:
+
+$$
+\hat{p}_{\mathrm{exceed}} =
+\frac{1}{N}\sum_{i=1}^{N}
+\mathbf{1}(|y_i - \hat{y}_i| > \tau)
+$$
+
+where \(\tau\) is the user-selected absolute error tolerance.
+
+This value is an observed historical proportion, not an exact probability of future exceedance. The tolerance uses the same units as the series values. For example, a tolerance of `1` means that a prediction is considered within tolerance only when its absolute error is no greater than one value unit.
+
+## Outputs
+
+### Confirmed observation CSV
+
+Contains the user-approved reconstructed series:
 
 ```csv
 timestamp,value
-2023-01-01,12076.18
-2023-02-01,12248.53
+2024-01-01,123.4
+2024-02-01,127.8
 ```
 
-The internal extraction error field is not displayed or included in the user-facing table because it is not informative during normal extraction. It remains available internally for future diagnostics and evaluation work.
+### Forecast CSV
+
+Contains future forecast values:
+
+```csv
+timestamp,forecast_value
+2025-01-01,245.1
+2025-02-01,249.7
+```
+
+The application currently provides CSV downloads. JSON export is reserved for future development.
 
 ## Technical approach
 
-The implementation uses Python as the primary language.
+### Language and framework
 
-### Main libraries
+- **Python** as the primary language.
+- **Streamlit** for the desktop web interface.
 
-- **Streamlit** for the desktop web application.
-- **OpenCV** for image processing, line detection, and plot-boundary detection.
-- **Pillow** for image loading and basic preprocessing.
-- **NumPy** for numerical pixel and interpolation operations.
-- **pandas** for time-series preparation, resampling, and tables.
-- **Plotly** for planned interactive result visualizations.
-- **statsmodels** for planned forecasting functionality.
-- **matplotlib** only for generating reproducible synthetic test charts.
+### Image processing and data handling
+
+- **OpenCV** for image processing, color segmentation, connected components, morphological operations, line detection, and plot-boundary detection.
+- **Pillow** for image support where needed.
+- **NumPy** for numeric calculations.
+- **pandas** for observation tables, validation, and time-series preparation.
+
+### Visualization and forecasting
+
+- **Plotly** for extracted-data, forecast, and validation charts.
+- **statsmodels** for Holt linear exponential smoothing.
 
 ## Project structure
 
@@ -141,37 +240,44 @@ project/
 ├── README.md
 ├── requirements.txt
 ├── app.py
-├── scripts/
-│   ├── generate_test_charts.py
-│   ├── benchmark_extraction.py
-│   ├── create_extraction_debug_outputs.py
-│   └── diagnose_calibration.py
-├── test_data/
-│   ├── ground_truth/
-│   ├── images/
-│   └── test_cases_metadata.json
 ├── src/
 │   ├── calibration.py
 │   ├── evaluation.py
 │   ├── extraction.py
 │   ├── extractor.py
+│   ├── forecasting.py
 │   ├── line_extraction.py
-│   └── plot_detection.py
-└── tests/
-    ├── test_calibration.py
-    ├── test_evaluation.py
-    ├── test_extraction.py
-    ├── test_extractor.py
-    ├── test_line_extraction.py
-    └── test_plot_detection.py
+│   ├── plot_detection.py
+│   └── validation.py
+├── tests/
+│   ├── test_calibration.py
+│   ├── test_evaluation.py
+│   ├── test_extraction.py
+│   ├── test_extractor.py
+│   ├── test_forecasting.py
+│   ├── test_forecasting_validation.py
+│   ├── test_line_extraction.py
+│   └── test_plot_detection.py
+├── test_data/
+│   ├── images/
+│   └── test_cases_metadata.json
+└── scripts/
+    └── generate_test_charts.py
 ```
+
+The exact contents may evolve as the project grows.
 
 ## Installation and execution
 
-Create and activate a local virtual environment:
+Create a virtual environment from the project root:
 
 ```powershell
 python -m venv .venv
+```
+
+Activate it in PowerShell:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
@@ -181,86 +287,129 @@ Install dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Run the application through Streamlit:
+Run the application:
 
 ```powershell
 python -m streamlit run app.py
 ```
 
-The application should not be launched by running `python app.py` directly because Streamlit supplies the application execution context.
+The application opens in a browser, normally at:
+
+```text
+http://localhost:8501
+```
 
 ## Testing
 
-Run the automated tests from the repository root:
+Run the complete automated test suite from the repository root:
 
 ```powershell
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-The current extraction test suite contains 26 tests, including explicit coverage for weekly frequency extraction.
+The tests cover:
 
-The test data can be regenerated with:
+- Pixel-to-value calibration.
+- Numeric and calendar time conversion.
+- Extraction result structure and warnings.
+- Plot-boundary detection.
+- Line extraction.
+- Extraction evaluation.
+- Holt forecasting.
+- Calendar-aware forecasting.
+- Forecast horizon validation.
+- Rolling validation.
+- Error-tolerance exceedance calculations.
 
-```powershell
-python scripts/generate_test_charts.py
-```
+The missing-image tests intentionally cause OpenCV to print a file-loading warning. This is expected test behavior.
 
-The generator creates 11 reproducible synthetic chart cases, corresponding ground-truth CSV files, and metadata.
+## Test data
 
-The generated cases cover:
+The project uses reproducible synthetic digital charts as ground-truth test data. These charts allow the extracted pixel data to be compared with known source values.
 
-- Increasing monthly data.
-- Decreasing yearly data.
-- Hourly temperature data.
-- Noisy machine-vibration data.
-- Hourly electricity demand.
-- Obscured daily rainfall data.
-- Yearly energy consumption.
-- Low-resolution daily website visits.
-- Elapsed-time battery discharge data.
-- Unsupported multiple-line input.
-- Weekly customer orders.
+The test set includes representative cases such as:
 
-## Extraction benchmark
+- Increasing series.
+- Decreasing series.
+- Stable series.
+- Noisy series.
+- Seasonal-looking series.
+- Different time frequencies.
+- Different axis ranges.
+- Low-resolution charts.
+- Obscured or difficult charts.
+- Unsupported multiple-line charts.
 
-The benchmark evaluates the frequency-aligned observations returned to the user, rather than the internal pixel-level samples.
+The test data is intended for reproducibility and regression testing rather than as a claim that the extractor supports every chart image.
 
-The normalized mean absolute error is calculated relative to each ground-truth value range.
+## Design decisions
 
-Current results are:
+### User-confirmed metadata instead of OCR
 
-| Test case | Normalized mean error |
-|---|---:|
-| Product sales | 0.1343% |
-| Manufacturing defect rate | 0.1197% |
-| Room temperature | 0.5866% |
-| Machine vibration | 16.1582% |
-| Electricity demand | 1.4145% |
-| Daily rainfall, obscured | 3.9525% |
-| Annual energy consumption | 0.3018% |
-| Website visits, low resolution | 1.1888% |
-| Battery discharge, elapsed time | 0.0788% |
-| Weekly customer orders | 0.2236% |
+The MVP requires the user to confirm axis ranges, units, frequency, and time representation. This avoids adding OCR complexity and makes the calibration assumptions visible.
 
-The benchmark now evaluates the same frequency-aligned data that appears in the application table and CSV output. For example, the product-sales case is evaluated at 24 monthly observations, while the weekly customer-orders case is evaluated at 52 weekly observations.
+### Editable observations before forecasting
 
-The machine-vibration case remains the main documented limitation. Its noisy, rapidly changing curve is more difficult to recover accurately from raster pixels. The obscured daily-rainfall case also has higher error because part of the plotted line is intentionally hidden.
+Image extraction is approximate. Requiring the user to inspect and confirm the observation table prevents unreviewed pixel estimates from being sent directly into forecasting.
 
-The results demonstrate strong extraction performance for the supported synthetic cases while preserving the limitations of difficult or degraded input images honestly.
+### One-series scope
 
-## Forecasting roadmap
+A single continuous line keeps the extraction, editing, forecasting, and validation workflow understandable and demonstrable. Multiple plotted lines are explicitly rejected rather than silently mixing or selecting one series.
 
-Forecasting is planned but not yet connected to the current Streamlit workflow.
+### Separate extraction and forecasting stages
 
-The planned MVP forecasting implementation includes:
+The extracted historical data is visible independently from the forecast. This makes it possible to evaluate whether an issue came from image reconstruction or from the forecasting model.
 
-- Holt's linear exponential smoothing using `statsmodels`.
-- A model interface that can later support seasonal Holt-Winters and AutoReg.
-- Rolling forecast validation that preserves time order.
-- Mean historical absolute forecast error.
-- User-selected forecast horizon.
-- User-selected error tolerance.
-- Estimated historical proportion of validation errors exceeding the tolerance.
-- Forecast and validation downloads.
+## Future scope
 
-The exceedance result will be presented as an estimated historical proportion, not as a guarantee of future forecast performance.
+The following features were considered but are outside the current version:
+
+### Broader chart support
+
+- Multiple same-color plotted lines.
+- Multiple-series extraction with legend association.
+- Bar charts.
+- Scatter plots.
+- Area charts.
+- Hand-drawn charts.
+- Photographs of charts.
+- 3D charts.
+
+### Better image understanding
+
+- OCR for automatic axis labels, units, and ranges.
+- Automatic detection of chart type.
+- More robust line detection for black, gray, faint, overlapping, or heavily fragmented lines.
+- Improved quality scoring for blur, occlusion, and resolution.
+- Confidence maps and per-point extraction reliability.
+
+### Forecasting improvements
+
+- Seasonal Holt-Winters models.
+- AutoReg and other model candidates.
+- Automatic model selection.
+- Baseline-model comparisons.
+- Additional error metrics such as normalized MAE, RMSE, and percentage-based metrics.
+- Prediction intervals and uncertainty bands.
+- Automatic forecast-horizon recommendations.
+- Plain-English forecast interpretation and warnings.
+
+### Data and interface improvements
+
+- JSON export containing metadata and observations.
+- Combined historical, forecast, and validation exports.
+- Mobile-responsive layout.
+- Batch processing of several images.
+- More interactive correction of extracted points.
+- Reusable project sessions and saved metadata.
+
+## Known interpretation notes
+
+- A low absolute tolerance can produce a high exceedance proportion when the series values are large. Tolerance should be selected in the units of the data.
+- A five-step forecast is more difficult to validate than a one-step forecast.
+- Rolling validation windows can overlap, so individual predictions are not independent observations.
+- Forecasting results should be interpreted together with the chart, MAE, selected horizon, tolerance, and the quality of the confirmed historical data.
+
+## License and authorship
+
+No separate open-source license is currently specified. Add a license before distributing the project outside its intended evaluation context.
