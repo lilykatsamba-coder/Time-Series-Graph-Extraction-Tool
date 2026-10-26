@@ -192,6 +192,9 @@ def reset_observation_editing_state():
     st.session_state["confirmed_observations"] = None
     st.session_state["current_observations"] = None
     st.session_state.pop("observations_editor", None)
+    st.session_state["observations_editor_revision"] = (
+        st.session_state.get("observations_editor_revision", 0) + 1
+    )
 
 
 def reset_forecasting_state():
@@ -961,7 +964,10 @@ if uploaded_file is not None and metadata_confirmed:
                 width="stretch",
                 hide_index=True,
                 disabled=observations_locked,
-                key="observations_editor",
+                key=(
+                    "observations_editor_"
+                    f"{st.session_state.get('observations_editor_revision', 0)}"
+                ),
                 num_rows="dynamic"
             )
 
