@@ -45,7 +45,7 @@ The current version supports:
 - Mean absolute error reporting.
 - Historical tolerance-exceedance reporting.
 - Forecast CSV download.
-- Warnings for unrecognizable graphs, multiple plotted lines, and relatively low-resolution images.
+- Warnings for unrecognizable graphs, multiple plotted lines.
 
 ## Supported input and current limitations
 
