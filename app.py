@@ -4,8 +4,11 @@ import tempfile
 import pandas as pd
 import cv2
 import streamlit as st
+import plotly.graph_objects as go
 
 from src.extractor import extract_chart_data
+from src.forecasting import forecast_time_series
+from src.validation import rolling_validate_forecast
 
 
 st.set_page_config(
@@ -95,6 +98,178 @@ def prepare_csv_download(
         index=False
     )
 
+def observations_are_equal(left, right, metadata):
+    """Compare observations after normalizing editor type changes."""
+
+    required_columns = ["timestamp", "value"]
+
+    if any(
+        column not in left.columns
+        or column not in right.columns
+        for column in required_columns
+    ):
+        return False
+
+    left_values = left[required_columns].reset_index(drop=True).copy()
+    right_values = right[required_columns].reset_index(drop=True).copy()
+
+    if len(left_values) != len(right_values):
+        return False
+
+    if metadata["time_representation"] == "Calendar date/time":
+        left_values["timestamp"] = pd.to_datetime(
+            left_values["timestamp"], errors="coerce"
+        )
+        right_values["timestamp"] = pd.to_datetime(
+            right_values["timestamp"], errors="coerce"
+        )
+    else:
+        left_values["timestamp"] = pd.to_numeric(
+            left_values["timestamp"], errors="coerce"
+        )
+        right_values["timestamp"] = pd.to_numeric(
+            right_values["timestamp"], errors="coerce"
+        )
+
+    left_values["value"] = pd.to_numeric(
+        left_values["value"], errors="coerce"
+    )
+    right_values["value"] = pd.to_numeric(
+        right_values["value"], errors="coerce"
+    )
+
+    return left_values.equals(right_values)
+
+
+def validate_observations(observations, metadata):
+    """Validate observations before accepting them for forecasting."""
+
+    required_columns = ["timestamp", "value"]
+
+    if any(column not in observations.columns for column in required_columns):
+        return ["The table must contain timestamp and value columns."]
+
+    values = observations[required_columns].copy()
+
+    if metadata["time_representation"] == "Calendar date/time":
+        values["timestamp"] = pd.to_datetime(
+            values["timestamp"], errors="coerce"
+        )
+    else:
+        values["timestamp"] = pd.to_numeric(
+            values["timestamp"], errors="coerce"
+        )
+
+    values["value"] = pd.to_numeric(
+        values["value"], errors="coerce"
+    )
+
+    validation_errors = []
+
+    if values.empty:
+        validation_errors.append("The table must contain at least one observation.")
+        return validation_errors
+
+    if values["timestamp"].isna().any():
+        validation_errors.append("Every timestamp must contain a valid value.")
+
+    if values["value"].isna().any():
+        validation_errors.append("Every observation value must be numeric.")
+
+    if values["timestamp"].duplicated().any():
+        validation_errors.append("Timestamps must be unique.")
+
+    if not values["timestamp"].isna().any() and not values["timestamp"].is_monotonic_increasing:
+        validation_errors.append("Timestamps must be in increasing order.")
+
+    return validation_errors
+
+
+def reset_observation_editing_state():
+    """Clear the editable-observations workflow state."""
+
+    st.session_state["observations_locked"] = False
+    st.session_state["confirmed_observations"] = None
+    st.session_state["current_observations"] = None
+    st.session_state.pop("observations_editor", None)
+
+
+def reset_forecasting_state():
+    """Clear forecast and validation results."""
+
+    st.session_state["forecast_result"] = None
+    st.session_state["validation_result"] = None
+    st.session_state["forecast_error"] = None
+    st.session_state["validation_error"] = None
+
+
+def build_forecast_figure(observations, forecast):
+    """Build a Plotly figure containing actuals and forecasts."""
+
+    figure = go.Figure()
+
+    figure.add_trace(
+        go.Scatter(
+            x=observations["timestamp"],
+            y=observations["value"],
+            mode="lines+markers",
+            name="Confirmed observations",
+        )
+    )
+
+    figure.add_trace(
+        go.Scatter(
+            x=forecast["timestamp"],
+            y=forecast["forecast_value"],
+            mode="lines+markers",
+            name="Forecast",
+            line={"dash": "dash"},
+        )
+    )
+
+    figure.update_layout(
+        xaxis_title="Time",
+        yaxis_title="Value",
+        legend_title="Series",
+        hovermode="x unified",
+    )
+
+    return figure
+
+
+def build_validation_figure(predictions):
+    """Build a Plotly figure for rolling-validation predictions."""
+
+    figure = go.Figure()
+
+    figure.add_trace(
+        go.Scatter(
+            x=predictions["target_timestamp"],
+            y=predictions["actual_value"],
+            mode="lines+markers",
+            name="Actual historical value",
+        )
+    )
+
+    figure.add_trace(
+        go.Scatter(
+            x=predictions["target_timestamp"],
+            y=predictions["predicted_value"],
+            mode="lines+markers",
+            name="Rolling prediction",
+        )
+    )
+
+    figure.update_layout(
+        xaxis_title="Time",
+        yaxis_title="Value",
+        legend_title="Series",
+        hovermode="x unified",
+    )
+
+    return figure
+
+
 st.title("Time Series Graph Extraction Tool")
 
 st.write(
@@ -124,6 +299,8 @@ else:
         st.session_state["metadata"] = {}
         st.session_state["metadata_confirmed"] = False
         st.session_state["extraction"] = None
+        reset_observation_editing_state()
+        reset_forecasting_state()
 
     st.success(f"Uploaded file: {uploaded_file.name}")
 
@@ -509,6 +686,8 @@ else:
 
                 st.session_state["metadata_confirmed"] = True
                 st.session_state["extraction"] = None
+                reset_observation_editing_state()
+                reset_forecasting_state()
 
                 st.rerun()
 
@@ -631,6 +810,8 @@ else:
                     "metadata_confirmed"
                 ] = False
                 st.session_state["extraction"] = None
+                reset_observation_editing_state()
+                reset_forecasting_state()
                 st.rerun()
                 
 
@@ -693,6 +874,8 @@ if uploaded_file is not None and metadata_confirmed:
                         extraction_result.diagnostics
                     )
                 }
+                reset_observation_editing_state()
+                reset_forecasting_state()
 
             else:
                 st.session_state["extraction"] = {
@@ -741,22 +924,95 @@ if uploaded_file is not None and metadata_confirmed:
                 "Extracted observations"
             )
 
-            displayed_observations = (
+            original_observations = (
                 extraction["observations"]
                 .drop(
                     columns=["extraction_error"],
                     errors="ignore"
                 )
+                .reset_index(drop=True)
             )
 
-            st.dataframe(
-                displayed_observations,
+            observations_locked = st.session_state.get(
+                "observations_locked", False
+            )
+
+            confirmed_observations = st.session_state.get(
+                "confirmed_observations"
+            )
+            current_observations = st.session_state.get(
+                "current_observations"
+            )
+
+            if observations_locked and confirmed_observations is not None:
+                editor_input = confirmed_observations
+            elif not observations_locked and current_observations is not None:
+                editor_input = current_observations
+            else:
+                editor_input = original_observations
+
+            st.write(
+                "Review the extracted observations. You can edit the "
+                "timestamps or values before accepting the data."
+            )
+
+            edited_observations = st.data_editor(
+                editor_input,
                 width="stretch",
-                hide_index=True
+                hide_index=True,
+                disabled=observations_locked,
+                key="observations_editor",
+                num_rows="dynamic"
+            )
+
+            if not observations_locked:
+                st.session_state["current_observations"] = (
+                    edited_observations.copy()
+                )
+
+                has_edits = not observations_are_equal(
+                    edited_observations,
+                    original_observations,
+                    metadata
+                )
+
+                confirmation_label = (
+                    "Use edited data" if has_edits
+                    else "Use extracted data"
+                )
+
+                if st.button(confirmation_label):
+                    validation_errors = validate_observations(
+                        edited_observations, metadata
+                    )
+
+                    if validation_errors:
+                        for error in validation_errors:
+                            st.error(error)
+                    else:
+                        st.session_state["confirmed_observations"] = (
+                            edited_observations.copy()
+                        )
+                        st.session_state["observations_locked"] = True
+                        reset_forecasting_state()
+                        st.rerun()
+
+            else:
+                st.success("The observations are confirmed and locked.")
+
+                if st.button("Edit data"):
+                    st.session_state["observations_locked"] = False
+                    reset_forecasting_state()
+                    st.rerun()
+
+            download_observations = (
+                st.session_state.get("confirmed_observations")
+                if observations_locked
+                else edited_observations
             )
 
             csv_data = prepare_csv_download(
-                displayed_observations,
+                download_observations,
                 metadata
             )
 
@@ -776,8 +1032,172 @@ if uploaded_file is not None and metadata_confirmed:
 
             st.caption(
                 f"Extracted {len(extraction['observations'])} "
-                "pixel-level observations."
+                "frequency-aligned observations."
             )
+
+            if observations_locked:
+                st.divider()
+                st.subheader("Forecast")
+                st.write(
+                    "Choose the forecast horizon and error tolerance, "
+                    "then run the Holt forecast and historical validation."
+                )
+
+                control_col1, control_col2 = st.columns(2)
+
+                with control_col1:
+                    forecast_horizon = st.number_input(
+                        "Forecast horizon",
+                        min_value=1,
+                        value=5,
+                        step=1,
+                        help=(
+                            "Number of future frequency-aligned observations "
+                            "to forecast."
+                        )
+                    )
+
+                with control_col2:
+                    error_tolerance = st.number_input(
+                        "Error tolerance",
+                        min_value=0.0,
+                        value=1.0,
+                        step=0.1,
+                        format="%.4f",
+                        help=(
+                            "Absolute error threshold in the same unit as "
+                            "the values-axis data."
+                        )
+                    )
+
+                if st.button("Forecast"):
+                    st.session_state["forecast_result"] = None
+                    st.session_state["validation_result"] = None
+                    st.session_state["forecast_error"] = None
+                    st.session_state["validation_error"] = None
+
+                    confirmed_data = st.session_state[
+                        "confirmed_observations"
+                    ].copy()
+
+                    try:
+                        st.session_state["forecast_result"] = (
+                            forecast_time_series(
+                                confirmed_data,
+                                int(forecast_horizon),
+                                metadata,
+                            )
+                        )
+                    except ValueError as error:
+                        st.session_state["forecast_error"] = str(error)
+
+                    try:
+                        st.session_state["validation_result"] = (
+                            rolling_validate_forecast(
+                                confirmed_data,
+                                int(forecast_horizon),
+                                float(error_tolerance),
+                                metadata,
+                            )
+                        )
+                    except ValueError as error:
+                        st.session_state["validation_error"] = str(error)
+
+                    st.rerun()
+
+                forecast_result = st.session_state.get(
+                    "forecast_result"
+                )
+                validation_result = st.session_state.get(
+                    "validation_result"
+                )
+                forecast_error = st.session_state.get(
+                    "forecast_error"
+                )
+                validation_error = st.session_state.get(
+                    "validation_error"
+                )
+
+                if forecast_error:
+                    st.error(
+                        f"Forecast could not be generated: {forecast_error}"
+                    )
+
+                if validation_error:
+                    st.warning(
+                        "Rolling validation could not be completed: "
+                        f"{validation_error}"
+                    )
+
+                if forecast_result is not None:
+                    st.subheader("Forecast results")
+                    st.plotly_chart(
+                        build_forecast_figure(
+                            st.session_state["confirmed_observations"],
+                            forecast_result,
+                        ),
+                        width="stretch",
+                    )
+                    st.dataframe(
+                        forecast_result,
+                        width="stretch",
+                        hide_index=True,
+                    )
+
+                    forecast_csv = prepare_csv_download(
+                        forecast_result,
+                        metadata,
+                    )
+
+                    st.download_button(
+                        "Download forecast CSV",
+                        data=forecast_csv,
+                        file_name=f"{safe_series_name}_forecast.csv",
+                        mime="text/csv",
+                    )
+
+                if validation_result is not None:
+                    st.subheader("Rolling validation")
+                    metric_col1, metric_col2, metric_col3 = st.columns(3)
+
+                    with metric_col1:
+                        st.metric(
+                            "Mean absolute error",
+                            f"{validation_result.mean_absolute_error:.4f}",
+                        )
+
+                    with metric_col2:
+                        st.metric(
+                            "Evaluated predictions",
+                            validation_result.evaluated_prediction_count,
+                        )
+
+                    with metric_col3:
+                        st.metric(
+                            "Historical exceedance proportion",
+                            f"{validation_result.exceedance_proportion:.1%}",
+                        )
+
+                    st.caption(
+                        "The exceedance proportion is the historical share "
+                        "of rolling predictions whose absolute error exceeded "
+                        f"the tolerance of {validation_result.tolerance:.4f}. "
+                        "It is not an exact probability of future exceedance."
+                    )
+
+                    st.plotly_chart(
+                        build_validation_figure(
+                            validation_result.predictions,
+                        ),
+                        width="stretch",
+                    )
+
+                    with st.expander("View rolling-validation details"):
+                        st.dataframe(
+                            validation_result.predictions,
+                            width="stretch",
+                            hide_index=True,
+                        )
 
         else:
             st.error(
