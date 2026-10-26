@@ -6,7 +6,6 @@ The tool is intended for situations where the original numerical dataset is unav
 
 ## Project overview
 
-This project is a desktop-only Streamlit web application that extracts time-series data from a digital 2D line graph.
 The application combines:
 
 1. **Computer vision** to detect a plotted line and the plot region in an uploaded graph image.
@@ -16,6 +15,14 @@ The application combines:
 5. **Expanding-window rolling validation** to evaluate historical forecast performance.
 
 The application is deliberately scoped as a focused MVP. It prioritizes transparency and user correction over attempting to support every chart type.
+
+## Example
+
+The repository includes a representative digital chart used in the extraction workflow and regression tests:
+
+![Example product-sales chart](test_data/images/product_sales.png)
+
+The application detects the plotted line from the image, maps its pixels to user-confirmed time and value axes, and presents the reconstructed observations for review.
 
 ## Current capabilities
 
@@ -260,6 +267,7 @@ project/
 │   └── test_plot_detection.py
 ├── test_data/
 │   ├── images/
+│   ├── ground_truth/
 │   └── test_cases_metadata.json
 └── scripts/
     └── generate_test_charts.py
@@ -325,7 +333,7 @@ The missing-image tests intentionally cause OpenCV to print a file-loading warni
 
 ## Test data
 
-The project uses reproducible synthetic digital charts as ground-truth test data. These charts allow the extracted pixel data to be compared with known source values.
+The project uses reproducible synthetic digital charts as ground-truth test data. The `test_data/images/` directory contains the chart images, while `test_data/ground_truth/` contains the corresponding known source values used to evaluate extraction quality. `test_cases_metadata.json` stores the confirmed time-axis, value-axis, unit, and frequency metadata for the cases.
 
 The test set includes representative cases such as:
 
