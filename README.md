@@ -270,10 +270,22 @@ project/
 │   ├── ground_truth/
 │   └── test_cases_metadata.json
 └── scripts/
+    ├── benchmark_extraction.py
+    ├── create_extraction_debug_outputs.py
+    ├── diagnose_calibration.py
     └── generate_test_charts.py
 ```
 
-The exact contents may evolve as the project grows.
+### Development and evaluation scripts
+
+The `scripts/` directory contains reproducible development and evaluation utilities:
+
+- `generate_test_charts.py` creates the synthetic chart images, ground-truth data, and metadata used by the test workflow.
+- `benchmark_extraction.py` evaluates extracted observations against the known ground-truth values.
+- `create_extraction_debug_outputs.py` creates annotated diagnostic outputs for inspecting extraction behavior.
+- `diagnose_calibration.py` supports investigation of pixel-to-axis calibration and extraction accuracy.
+
+These scripts are separate from the Streamlit application and are included to make the development, testing, and evaluation workflow transparent.
 
 ## Installation and execution
 
